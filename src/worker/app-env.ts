@@ -6,5 +6,7 @@ export type AppEnv = {
   Variables: {
     /** Set by `requireUser` for routes that need a signed-in User. */
     user: SignedInUser;
+    /** Set by `requireFamily` for Family-scoped routes: the User's Family from the path. */
+    familyId: string;
   };
 };

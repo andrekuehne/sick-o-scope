@@ -4,6 +4,7 @@ import { HTTPException } from "hono/http-exception";
 import type { ServiceStatus } from "../shared/service-status.ts";
 import type { AppEnv } from "./app-env.ts";
 import { authRoutes } from "./auth/routes.ts";
+import { familyRoutes } from "./families/routes.ts";
 
 // The Worker only ever sees /api/* (wrangler.jsonc: run_worker_first);
 // everything else is the SPA, served as static assets (ADR 0001).
@@ -15,6 +16,7 @@ const app = new Hono<AppEnv>().basePath("/api");
 app.use(csrf());
 
 app.route("/", authRoutes);
+app.route("/families/:familyId", familyRoutes);
 
 app.get("/status", async (c) => {
   await c.env.DB.prepare("SELECT 1").first();

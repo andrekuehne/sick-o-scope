@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { type Me, SignInRequest } from "../../shared/auth.ts";
 import type { AppEnv } from "../app-env.ts";
+import { listMembers } from "../members/members.ts";
 import { clearSessionCookie, requireUser, sessionTokenFrom, setSessionCookie } from "./current-user.ts";
 import { deviceLabel } from "./device-label.ts";
 import { signOutDevice } from "./devices.ts";
@@ -47,7 +48,7 @@ authRoutes.get("/me", requireUser, async (c) => {
   return me ? c.json(me) : c.json({ error: "signed_out" }, 401);
 });
 
-/** The User and their Family. In v1 every User belongs to exactly one Family. */
+/** The User, their Family and its Members. In v1 every User belongs to exactly one Family. */
 async function meOf(db: D1Database, userId: string): Promise<Me | null> {
   const row = await db
     .prepare(
@@ -65,5 +66,6 @@ async function meOf(db: D1Database, userId: string): Promise<Me | null> {
   return {
     user: { id: row.user_id, name: row.display_name },
     family: { id: row.family_id, name: row.family_name },
+    members: await listMembers(db, row.family_id),
   };
 }

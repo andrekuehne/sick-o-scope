@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { Member } from "./members.ts";
 
 /** Body of `POST /api/sign-in`: the token from the Sign-in link's fragment. */
 export const SignInRequest = z.object({
@@ -12,9 +13,10 @@ export const SignInFailure = z.object({
 });
 export type SignInFailure = z.infer<typeof SignInFailure>;
 
-/** Answer of `GET /api/me` (and of a successful sign-in): who is signed in, in which Family. */
+/** Answer of `GET /api/me` (and of a successful sign-in): who is signed in, their Family and its Members. */
 export const Me = z.object({
   user: z.object({ id: z.string(), name: z.string() }),
   family: z.object({ id: z.string(), name: z.string() }),
+  members: z.array(Member),
 });
 export type Me = z.infer<typeof Me>;

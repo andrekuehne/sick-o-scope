@@ -2,7 +2,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import type { Me } from "../shared/auth.ts";
 import { fetchMe } from "./api.ts";
 
-const ME_KEY = ["me"] as const;
+export const ME_KEY = ["me"] as const;
 
 /** Who is signed in on this Device: `undefined` while loading, `null` when signed out. */
 export function useMe() {

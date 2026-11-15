@@ -1,8 +1,7 @@
-import { useState } from "react";
 import { Link, NavLink, Route, Routes } from "react-router";
 import type { Me } from "../shared/auth.ts";
-import { signOut } from "./api.ts";
-import { useMe, useSetMe } from "./me.ts";
+import { useMe } from "./me.ts";
+import { SettingsScreen } from "./screens/Settings.tsx";
 import { SignInScreen } from "./screens/SignIn.tsx";
 import { t } from "./strings.ts";
 
@@ -48,7 +47,7 @@ function SignedInApp() {
       <Routes>
         <Route index element={<Today me={me.data} />} />
         <Route path="verlauf" element={<Placeholder title={t.timeline.title} text={t.timeline.placeholder} />} />
-        <Route path="einstellungen" element={<Settings me={me.data} />} />
+        <Route path="einstellungen" element={<SettingsScreen me={me.data} />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
     </Frame>
@@ -93,32 +92,6 @@ function Today({ me }: { me: Me }) {
       <h1>{t.today.greeting(me.user.name)}</h1>
       <p className="muted">{me.family.name}</p>
       <p className="muted">{t.today.placeholder}</p>
-    </section>
-  );
-}
-
-function Settings({ me }: { me: Me }) {
-  const setMe = useSetMe();
-  const [failed, setFailed] = useState(false);
-
-  async function onSignOut() {
-    try {
-      await signOut();
-      setMe(null);
-    } catch {
-      setFailed(true);
-    }
-  }
-
-  return (
-    <section className="screen">
-      <h1>{t.settings.title}</h1>
-      <p className="muted">{t.settings.signedInAs(me.user.name, me.family.name)}</p>
-      <p className="muted">{t.settings.placeholder}</p>
-      <button type="button" className="button" onClick={onSignOut}>
-        {t.settings.signOut}
-      </button>
-      {failed && <p className="notice">{t.offlineOrError}</p>}
     </section>
   );
 }

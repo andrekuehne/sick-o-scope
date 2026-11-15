@@ -49,3 +49,8 @@ export async function signedIn(names?: { familyName: string; userName: string })
   if (res.status !== 200) throw new Error(`sign-in failed: ${res.status} ${await res.text()}`);
   return { ...family, cookie: sessionCookieFrom(res) };
 }
+
+/** A response's JSON body, typed by the caller (the Workers types make it `unknown`). */
+export async function json<T>(res: Response | Promise<Response>): Promise<T> {
+  return (await (await res).json()) as T;
+}
