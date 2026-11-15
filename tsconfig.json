@@ -1,3 +1,5 @@
+// The Worker and code shared with the client. The client, tests and tooling
+// have their own projects (src/client, test, tsconfig.node.json) that extend this one.
 {
   "compilerOptions": {
     "target": "es2022",
@@ -5,13 +7,12 @@
     "moduleResolution": "bundler",
     "lib": ["es2022"],
     "types": ["./worker-configuration.d.ts"],
-    "jsx": "react-jsx",
-    "jsxImportSource": "hono/jsx",
     "strict": true,
     "noUncheckedIndexedAccess": true,
+    "noFallthroughCasesInSwitch": true,
     "isolatedModules": true,
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["src", "worker-configuration.d.ts"]
+  "include": ["src/worker", "src/shared", "worker-configuration.d.ts"]
 }

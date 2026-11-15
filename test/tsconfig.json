@@ -8,7 +8,8 @@
   },
   "include": [
     "./**/*.ts",
-    "../src",
+    "../src/worker",
+    "../src/shared",
     "../worker-configuration.d.ts"
   ]
 }

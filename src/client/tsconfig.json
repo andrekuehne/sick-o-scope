@@ -1,0 +1,10 @@
+// The browser app: DOM types, React JSX, Vite and PWA virtual modules. No Worker types.
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "lib": ["es2022", "dom", "dom.iterable"],
+    "types": ["vite/client", "vite-plugin-pwa/client"],
+    "jsx": "react-jsx"
+  },
+  "include": ["./**/*", "../shared"]
+}

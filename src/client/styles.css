@@ -1,0 +1,106 @@
+/* Design tokens: playful, warm, mobile-first. Severity colours come with the timeline. */
+:root {
+  color-scheme: light dark;
+  --bg: #fff8f0;
+  --surface: #ffffff;
+  --text: #2b2235;
+  --muted: #6f6479;
+  --accent: #ff7a59;
+  --accent-soft: #ffe3d8;
+  --border: #f0e2d6;
+  --radius: 16px;
+  --nav-height: 64px;
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.5;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1d1724;
+    --surface: #282031;
+    --text: #f5eefa;
+    --muted: #b3a7bf;
+    --accent: #ff8f73;
+    --accent-soft: #46303a;
+    --border: #3a2f45;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-tap-highlight-color: transparent;
+}
+
+.app {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+.app-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: calc(12px + env(safe-area-inset-top)) 16px 12px;
+  font-weight: 700;
+  font-size: 1.15rem;
+}
+
+.app-logo {
+  font-size: 1.6rem;
+}
+
+.app-main {
+  flex: 1;
+  padding: 0 16px calc(var(--nav-height) + 24px + env(safe-area-inset-bottom));
+}
+
+.screen h1 {
+  margin: 8px 0;
+  font-size: 1.6rem;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+a {
+  color: var(--accent);
+}
+
+.app-nav {
+  position: fixed;
+  inset: auto 0 0 0;
+  display: flex;
+  height: calc(var(--nav-height) + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
+
+.app-nav-item {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 0.8rem;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.app-nav-item.active {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.app-nav-icon {
+  font-size: 1.4rem;
+}

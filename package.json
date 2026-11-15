@@ -4,31 +4,48 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "wrangler dev",
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite build && vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "typecheck": "tsc --noEmit -p . && tsc --noEmit -p test",
-    "cf-typegen": "wrangler types --strict-vars=false",
-    "db:migrate:local": "wrangler d1 migrations apply DB --local",
-    "db:migrate:remote": "wrangler d1 migrations apply DB --remote",
-    "deploy": "wrangler deploy"
+    "test:e2e": "playwright test",
+    "typecheck": "tsc -p . && tsc -p src/client && tsc -p test && tsc -p tsconfig.node.json",
+    "cf-typegen": "wrangler types --strict-vars=false --config wrangler.jsonc",
+    "icons": "node scripts/generate-icons.mjs",
+    "db:migrate:local": "wrangler d1 migrations apply DB --local --config wrangler.jsonc",
+    "db:migrate:remote": "wrangler d1 migrations apply DB --remote --config wrangler.jsonc",
+    "deploy": "vite build && wrangler deploy"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/andrekuehne/sick-o-scope.git"
   },
   "dependencies": {
-    "hono": "^4.13.18"
+    "hono": "^4.13.18",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-router": "^8.5.1",
+    "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.69.1",
     "@cloudflare/vitest-plugin": "^1.8.2",
+    "@playwright/test": "^1.65.1",
     "@types/node": "^24.19.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.3.0",
     "typescript": "^7.0.2",
+    "vite": "^8.3.8",
+    "vite-plugin-pwa": "^2.0.0",
     "vitest": "^5.1.0",
+    "workbox-window": "^7.4.1",
     "wrangler": "^4.162.0"
   },
   "allowScripts": {
     "esbuild@0.28.2": true,
+    "workerd@1.20261110.1": true,
     "workerd@1.20261113.1": true
   }
 }

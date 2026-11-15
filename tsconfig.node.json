@@ -1,0 +1,11 @@
+// Build and test tooling that runs in Node: Vite, Playwright and their tests and scripts.
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "lib": ["es2023", "dom"],
+    "types": ["node"],
+    "allowJs": true,
+    "checkJs": true
+  },
+  "include": ["vite.config.ts", "vitest.config.ts", "playwright.config.ts", "e2e", "scripts"]
+}

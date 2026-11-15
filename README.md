@@ -1,6 +1,13 @@
 # sick-o-scope
 
-A React + Vite PWA served by one Cloudflare Worker, with a Hono JSON API on `/api/*` and D1 for storage. See `docs/adr/` for why it differs from `lauf-register`.
+A playful family sickness tracker. See `GLOSSARY.md` for the vocabulary and `docs/adr/` for the architecture decisions.
+
+A React + Vite PWA served by one Cloudflare Worker, with a Hono JSON API on `/api/*` and D1 (EU jurisdiction) for storage:
+
+- `src/client/`: the React app (screens, UI strings in `strings.ts`, styles).
+- `src/worker/`: the Worker; it only ever handles `/api/*`, everything else is served as static assets with a fallback to the app.
+- `src/shared/`: code and Zod schemas used by both.
+- `public/icons/`: placeholder app icons, rendered by `npm run icons`.
 
 ## Development
 
@@ -9,14 +16,14 @@ A React + Vite PWA served by one Cloudflare Worker, with a Hono JSON API on `/ap
 - Node.js 24 and npm 11.19 or newer (npm gates install scripts; the approved ones are listed under `allowScripts` in `package.json`).
 - A Cloudflare account, only needed for deploying and the remote database.
 
-Everything else (Wrangler, Vitest, TypeScript) is a project dev dependency. Nothing is installed globally.
+Everything else (Vite, Wrangler, Vitest, Playwright, TypeScript) is a project dev dependency. Nothing is installed globally. For the end-to-end tests, download their browser once: `npx playwright install chromium`.
 
 ### First-time setup
 
 ```sh
 npm install
 npm run db:migrate:local   # create the local D1 database and apply migrations
-npm run dev                # http://localhost:8787
+npm run dev                # http://localhost:5173, app and API together
 ```
 
 For deploying by hand, sign in to Cloudflare once: `npx wrangler login`.
@@ -25,14 +32,18 @@ For deploying by hand, sign in to Cloudflare once: `npx wrangler login`.
 
 | Command | What it does |
 | --- | --- |
-| `npm run dev` | Local dev server with a local D1 database (stored in `.wrangler/`). |
-| `npm test` | Runs the tests inside the Workers runtime against a freshly migrated local D1. |
+| `npm run dev` | Vite dev server with hot reload; the Worker runs in the local Workers runtime with a local D1 (stored in `.wrangler/`). |
+| `npm test` | Runs the API tests inside the Workers runtime against a freshly migrated local D1. |
 | `npm run test:watch` | Same, in watch mode. |
-| `npm run typecheck` | Type-checks app and tests. |
+| `npm run test:e2e` | Builds the app and runs the Playwright tests against it (phone-sized Chromium). |
+| `npm run typecheck` | Type-checks Worker, client, tests and tooling. |
+| `npm run build` | Production build into `dist/` (client assets plus the Worker). |
+| `npm run preview` | Builds, then serves the production build locally, as deployed. |
 | `npm run db:migrate:local` | Applies new migrations to the local D1 database. |
 | `npm run db:migrate:remote` | Applies new migrations to the production D1 database. |
-| `npm run deploy` | Deploys the Worker by hand. Apply remote migrations first. Normally CI does both. |
+| `npm run deploy` | Builds and deploys by hand. Apply remote migrations first. Normally CI does both. |
 | `npm run cf-typegen` | Regenerates `worker-configuration.d.ts` after changing `wrangler.jsonc`. |
+| `npm run icons` | Re-renders the placeholder app icons. |
 
 ## Database migrations
 
@@ -44,9 +55,13 @@ npx wrangler d1 migrations create DB <short_description>
 
 Tests apply all migrations before each test file, in their own isolated storage.
 
+The scripts pass `--config wrangler.jsonc` explicitly: after a build, Wrangler would otherwise follow the build's redirect (`.wrangler/deploy/config.json`) to the generated config in `dist/`.
+
+Migrations must be additive (add tables and columns; drop or rename only in a later release), because CI applies them before the new code goes live, so the old code briefly runs against the new schema.
+
 ## CI/CD
 
-GitHub Actions (`.github/workflows/ci.yml`): every push and pull request runs `npm ci`, `npm run typecheck` and `npm test`. A push to `main` that passes then runs `npm run db:migrate:remote` and `npm run deploy`.
+GitHub Actions (`.github/workflows/ci.yml`): every push and pull request runs the typecheck, the API tests, a production build and the end-to-end tests. A push to `main` that passes all of them then applies the remote migrations, builds, and deploys.
 
 The deploy job runs in the GitHub environment `production` (Settings → Environments), which needs two secrets:
 
