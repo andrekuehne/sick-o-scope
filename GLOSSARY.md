@@ -9,7 +9,7 @@ A group of people whose health data belongs together and is invisible to everyon
 _Avoid_: Household, tenant, group
 
 **Member**:
-A person whose health is tracked, whether or not they ever sign in (for example a child). An archived Member no longer gets Check-ins but keeps their history.
+A person whose health is tracked, whether or not they ever sign in (for example a child). An archived Member no longer gets Check-ins but keeps their history. (The German UI says "Familienmitglied", which reads naturally there.)
 _Avoid_: Patient, person, tracked person, family member
 
 **User**:
