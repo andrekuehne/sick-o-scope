@@ -1,6 +1,6 @@
 # sick-o-scope
 
-Built on Cloudflare Workers + D1 with Hono (server-rendered HTML), the same architecture as `lauf-register`.
+A React + Vite PWA served by one Cloudflare Worker, with a Hono JSON API on `/api/*` and D1 for storage. See `docs/adr/` for why it differs from `lauf-register`.
 
 ## Development
 

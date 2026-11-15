@@ -1,0 +1,3 @@
+# React SPA on Workers, not server-rendered Hono like lauf-register
+
+The app is a React + Vite single-page app served as static assets by the same Cloudflare Worker whose Hono routes handle `/api/*`. The sibling project `lauf-register` (whose scaffold this repo started from) renders HTML on the server because it is opened once, on congested event networks. This app is the opposite: opened daily on home Wi-Fi, installed as a PWA with a cached shell, and built around rich client-side interaction (quick check-ins, a scrollable and later pinch-zoomable timeline, gestures). Server rendering would fight that; an SPA talking to a small domain-oriented JSON API fits it.
