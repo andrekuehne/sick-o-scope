@@ -81,3 +81,30 @@ test("logs a Sick day with Symptoms and a Severity, and switches between Sick an
   await sheet.getByRole("button", { name: "Speichern" }).click();
   await expect(luna).toContainText("Sofa-Kobold");
 });
+
+test("follows an illness day by day: Besser lowers the Severity and keeps the Symptoms", async ({ page }) => {
+  await signedInWithMembers(page, ["Luna"]);
+  const luna = page.getByRole("listitem", { name: "Luna" });
+  const bar = page.getByRole("navigation", { name: "Datum" });
+
+  // Yesterday: Sick with two Symptoms.
+  await bar.getByRole("button", { name: "Vorheriger Tag" }).click();
+  await expect(luna.getByRole("button", { name: "Luna: Besser" })).toHaveCount(0); // nothing to follow yet
+  await page.getByRole("button", { name: "Luna ist krank" }).click();
+  const sheet = page.getByRole("dialog", { name: /Luna/ });
+  await sheet.getByRole("button", { name: "Husten" }).click();
+  await sheet.getByRole("button", { name: "Fieber" }).click();
+  await sheet.getByRole("button", { name: /Richtig krank/ }).click();
+  await sheet.getByRole("button", { name: "Speichern" }).click();
+  await expect(luna).toContainText("Tag 1");
+
+  // Today: one tap.
+  await bar.getByRole("button", { name: "Nächster Tag" }).click();
+  await expect(luna).toContainText("Gestern: 🤒 Richtig krank");
+  await page.getByRole("button", { name: "Luna: Besser" }).click();
+  await expect(luna).toContainText("Angeschlagen");
+  await expect(luna).toContainText("Tag 2");
+  await expect(luna.getByRole("img", { name: "Husten" })).toBeVisible();
+  await expect(luna.getByRole("img", { name: "Fieber" })).toBeVisible();
+  await expect(luna.getByRole("button", { name: "Luna: Besser" })).toHaveCount(0); // today is logged now
+});

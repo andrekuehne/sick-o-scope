@@ -2,14 +2,24 @@ import { useEffect, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import type { Me } from "../../shared/auth.ts";
 import { addDays, isCalendarDate, localToday } from "../../shared/dates.ts";
-import { createHistory, type DayStatus } from "../../shared/history.ts";
-import type { CheckIn } from "../../shared/check-ins.ts";
+import type { CheckIn, CheckInState } from "../../shared/check-ins.ts";
+import { createHistory, type DayStatus, type History, type Shortcut } from "../../shared/history.ts";
 import type { Member } from "../../shared/members.ts";
 import { inCatalogOrder, symptom } from "../../shared/symptoms.ts";
 import { useCheckIns, useCheckInWrites } from "../check-ins.ts";
 import { CheckInSheet } from "../components/CheckInSheet.tsx";
 import { MemberAvatar } from "../components/MemberAvatar.tsx";
 import { t } from "../strings.ts";
+
+/** How far back the screen loads Check-ins, which is as far back as Streaks can reach. */
+const HISTORY_DAYS = 365;
+
+/** Recent days share one loaded range, ending today. */
+const RECENT_DAYS = 180;
+
+/** The shortcuts that follow a Sick day (Besser, Gleich, Schlechter), in the order the card shows them. */
+const AFTER_SICK_DAY = ["better", "same", "worse"] as const satisfies readonly Shortcut[];
+type ShortcutOffer = { shortcut: (typeof AFTER_SICK_DAY)[number]; state: CheckInState };
 
 /** The daily Check-in screen: one card per Member for the chosen date (default: today). */
 export function TodayScreen({ me }: { me: Me }) {
@@ -21,9 +31,11 @@ export function TodayScreen({ me }: { me: Me }) {
   const setDate = (next: string) => setParams(next === today ? {} : { tag: next }, { replace: true });
 
   const familyId = me.family.id;
-  const checkIns = useCheckIns(familyId, date, date);
+  const range = historyRange(date, today);
+  const checkIns = useCheckIns(familyId, range.from, range.to);
   const writes = useCheckInWrites(familyId);
-  const day = createHistory(me.members, checkIns.data ?? []).day(date);
+  const history = createHistory(me.members, checkIns.data ?? []);
+  const day = history.day(date);
   const gaps = day.members.filter((m) => m.status.kind === "gap");
   // The Member whose day is open in the editor sheet, if any.
   const [editing, setEditing] = useState<{ member: Member; startAs: CheckIn["status"] } | null>(null);
@@ -54,6 +66,7 @@ export function TodayScreen({ me }: { me: Me }) {
               💪 {date === today ? t.today.allHealthyToday : t.today.allHealthyOn(shortDate(date))}
             </button>
           </div>
+          {!checkIns.isPending && range.to === today && <FamilyStreakLine history={history} today={today} />}
 
           <ul className="day-cards">
             {day.members.map(({ member, status }) => (
@@ -61,8 +74,13 @@ export function TodayScreen({ me }: { me: Me }) {
                 key={`${date}|${member.id}`}
                 member={member}
                 status={checkIns.isPending ? null : status}
+                isToday={date === today}
+                yesterday={history.statusOf(member.id, addDays(date, -1))}
+                sickDay={status.kind === "sick" ? (history.memberStreak(member.id, date)?.days ?? null) : null}
+                shortcuts={status.kind === "gap" ? shortcutsAfterSickDay(history, member.id, date) : []}
                 busy={writes.busy}
                 onHealthy={() => writes.save({ date, memberId: member.id, state: { status: "healthy" } })}
+                onShortcut={(state) => writes.save({ date, memberId: member.id, state })}
                 onSick={() => setEditing({ member, startAs: "sick" })}
                 onEdit={() => setEditing({ member, startAs: "healthy" })}
               />
@@ -87,28 +105,81 @@ export function TodayScreen({ me }: { me: Me }) {
   );
 }
 
+/** Besser, Gleich and Schlechter for a Gap after a Sick day; none otherwise. */
+function shortcutsAfterSickDay(history: History, memberId: string, date: string): ShortcutOffer[] {
+  return AFTER_SICK_DAY.flatMap((shortcut) => {
+    const state = history.shortcut(shortcut, memberId, date);
+    return state ? [{ shortcut, state }] : [];
+  });
+}
+
+/** Recent days share one range ending today, so moving between them needs no refetch. */
+function historyRange(date: string, today: string): { from: string; to: string } {
+  const to = date > addDays(today, -RECENT_DAYS) ? today : date;
+  return { from: addDays(to, -(HISTORY_DAYS - 1)), to };
+}
+
+/** "Alle fit seit 3. Nov. (13 Tage) · Letzte Fit-Strähne: 9 Tage", as far as there is any. */
+function FamilyStreakLine({ history, today }: { history: History; today: string }) {
+  const { current, previous } = history.familyStreaks(today);
+  const parts = [
+    current && t.today.familyStreak(shortDate(current.from), current.days),
+    previous && t.today.previousFamilyStreak(previous.days),
+  ].filter((part) => part !== null);
+  return parts.length > 0 ? <p className="family-streak">{t.joined(parts)}</p> : null;
+}
+
 function MemberDayCard({
   member,
   status,
+  isToday,
+  yesterday,
+  sickDay,
+  shortcuts,
   busy,
   onHealthy,
+  onShortcut,
   onSick,
   onEdit,
 }: {
   member: Member;
   /** null while loading. */
   status: DayStatus | null;
+  isToday: boolean;
+  /** The day before the selected date. */
+  yesterday: DayStatus;
+  /** "Tag N" of the current Sick Streak. */
+  sickDay: number | null;
+  shortcuts: ShortcutOffer[];
   busy: boolean;
   onHealthy: () => void;
+  onShortcut: (state: CheckInState) => void;
   onSick: () => void;
   onEdit: () => void;
 }) {
+  const healthyButton = (
+    <button
+      type="button"
+      className="button primary small"
+      aria-label={t.today.markHealthyLabel(member.name)}
+      disabled={busy}
+      onClick={onHealthy}
+    >
+      {t.today.markHealthy}
+    </button>
+  );
+
   return (
     <li className="day-card" data-status={status?.kind ?? "loading"} aria-label={member.name}>
       <MemberAvatar member={member} />
       <div className="day-card-main">
         <span className="member-name">{member.name}</span>
-        <span className="day-card-status">{status ? statusText(status) : t.loading}</span>
+        <span className="day-card-status">
+          {status ? t.joined([statusText(status), ...(sickDay !== null ? [t.today.sickDay(sickDay)] : [])]) : t.loading}
+        </span>
+        {shortcuts.length > 0 && yesterday.kind === "sick" && (
+          <span className="day-card-status">{t.today.previousDaySick(isToday, t.severity[yesterday.severity])}</span>
+        )}
         {status?.kind === "sick" && status.symptoms.length > 0 && (
           <span className="day-card-badges">
             {inCatalogOrder(status.symptoms)
@@ -121,17 +192,38 @@ function MemberDayCard({
           </span>
         )}
       </div>
-      {status?.kind === "gap" && (
-        <div className="day-card-actions">
+      {status?.kind === "gap" && shortcuts.length > 0 && (
+        <>
           <button
             type="button"
-            className="button primary small"
-            aria-label={t.today.markHealthyLabel(member.name)}
+            className="icon-button"
+            aria-label={t.today.markSickLabel(member.name)}
+            title={t.today.markSickLabel(member.name)}
             disabled={busy}
-            onClick={onHealthy}
+            onClick={onSick}
           >
-            {t.today.markHealthy}
+            ✏️
           </button>
+          <div className="day-card-actions shortcuts">
+            {shortcuts.map(({ shortcut, state }) => (
+              <button
+                key={shortcut}
+                type="button"
+                className="button small"
+                aria-label={t.today.shortcutLabel(member.name, t.today.shortcut[shortcut])}
+                disabled={busy}
+                onClick={() => onShortcut(state)}
+              >
+                {t.today.shortcut[shortcut]}
+              </button>
+            ))}
+            {healthyButton}
+          </div>
+        </>
+      )}
+      {status?.kind === "gap" && shortcuts.length === 0 && (
+        <div className="day-card-actions">
+          {healthyButton}
           <button
             type="button"
             className="button small"

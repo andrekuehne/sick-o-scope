@@ -528,3 +528,24 @@ h3 {
   flex-basis: 100%;
   margin: 0;
 }
+
+/* After a Sick day: Besser · Gleich · Schlechter in equal columns, Fit below, even at 320px. */
+.day-card-actions.shortcuts {
+  flex-basis: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin-left: 0;
+}
+
+.shortcuts .button {
+  min-width: 0;
+  min-height: 48px;
+  padding: 0 4px;
+  font-size: 0.9rem;
+}
+
+.family-streak {
+  margin: -4px 0 12px;
+  color: var(--muted);
+  font-size: 0.9rem;
+}

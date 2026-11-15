@@ -1,5 +1,6 @@
 import { expect, it } from "vitest";
 import type { CheckIn } from "../src/shared/check-ins.ts";
+import { addDays } from "../src/shared/dates.ts";
 import { createHistory } from "../src/shared/history.ts";
 import type { Member } from "../src/shared/members.ts";
 import type { SymptomKey } from "../src/shared/symptoms.ts";
@@ -51,4 +52,113 @@ it("shows a day for the active Members only, and counts only explicit Check-ins"
 it("still knows an archived Member's past days", () => {
   const history = createHistory([member("oma", true)], [sick("oma", "2026-10-01", 4)]);
   expect(history.statusOf("oma", "2026-10-01")).toEqual({ kind: "sick", severity: 4, symptoms: [] });
+});
+
+it("counts a Member's current Streak across a month boundary, and a Gap ends it", () => {
+  const history = createHistory(
+    [member("luna")],
+    [
+      sick("luna", "2026-10-27", 2), // before the Gap: not part of the current Streak
+      sick("luna", "2026-10-29", 2),
+      sick("luna", "2026-10-30", 3),
+      sick("luna", "2026-10-31", 4),
+      sick("luna", "2026-11-01", 2),
+      healthy("luna", "2026-11-02"),
+      healthy("luna", "2026-11-03"),
+      sick("luna", "2026-11-04", 1), // only "Naja", but any Sick day breaks a Healthy Streak
+      healthy("luna", "2026-11-05"),
+    ],
+  );
+
+  expect(history.memberStreak("luna", "2026-11-01")).toEqual({ kind: "sick", from: "2026-10-29", days: 4 });
+  expect(history.memberStreak("luna", "2026-11-03")).toEqual({ kind: "healthy", from: "2026-11-02", days: 2 });
+  expect(history.memberStreak("luna", "2026-11-05")).toEqual({ kind: "healthy", from: "2026-11-05", days: 1 });
+  expect(history.memberStreak("luna", "2026-11-06")).toBeNull();
+});
+
+it("turns Besser at Severity 1 into a Healthy day and caps Schlechter at 5, keeping the Symptoms", () => {
+  const history = createHistory(
+    [member("luna"), member("max"), member("oma")],
+    [sick("luna", "2026-11-14", 1, ["cough"]), sick("max", "2026-11-14", 5, ["fever", "cough"]), sick("oma", "2026-11-14", 3, ["fever"])],
+  );
+  const shortcut = history.shortcut;
+
+  expect(shortcut("better", "luna", "2026-11-15")).toEqual({ status: "healthy", note: null });
+  expect(shortcut("worse", "max", "2026-11-15")).toEqual({ status: "sick", severity: 5, symptoms: ["fever", "cough"], note: null });
+  expect(shortcut("better", "oma", "2026-11-15")).toEqual({ status: "sick", severity: 2, symptoms: ["fever"], note: null });
+  expect(shortcut("worse", "oma", "2026-11-15")).toEqual({ status: "sick", severity: 4, symptoms: ["fever"], note: null });
+  expect(shortcut("same", "oma", "2026-11-15")).toEqual({ status: "sick", severity: 3, symptoms: ["fever"], note: null });
+});
+
+it("offers Wie gestern only after a logged day, without the note, and Gleich/Besser/Schlechter only after a Sick day", () => {
+  const history = createHistory(
+    [member("luna"), member("max"), member("ben")],
+    [
+      { ...sick("luna", "2026-11-14", 3, ["cough"]), note: "Fieber nachts 39,2" },
+      healthy("max", "2026-11-14"),
+      healthy("ben", "2026-11-13"), // then a Gap on the 14th
+    ],
+  );
+
+  expect(history.shortcut("like-yesterday", "luna", "2026-11-15")).toEqual({
+    status: "sick",
+    severity: 3,
+    symptoms: ["cough"],
+    note: null,
+  });
+  expect(history.shortcut("like-yesterday", "max", "2026-11-15")).toEqual({ status: "healthy", note: null });
+  expect(history.shortcut("better", "max", "2026-11-15")).toBeNull();
+  for (const shortcut of ["like-yesterday", "same", "better", "worse"] as const) {
+    expect(history.shortcut(shortcut, "ben", "2026-11-15")).toBeNull();
+  }
+});
+
+/** Healthy Check-ins for the Members on every day from `from` to `to`. */
+function healthyDays(memberIds: string[], from: string, to: string): CheckIn[] {
+  const days: CheckIn[] = [];
+  for (let date = from; date <= to; date = addDays(date, 1)) for (const id of memberIds) days.push(healthy(id, date));
+  return days;
+}
+
+it("finds the everyone-Healthy Family Streak: any Sick day breaks it, archived and newly added Members don't", () => {
+  const members = [member("luna"), member("max"), member("oma", true), member("baby")];
+  const checkIns = [
+    ...healthyDays(["luna", "max"], "2026-11-01", "2026-11-04"),
+    healthy("luna", "2026-11-05"),
+    sick("max", "2026-11-05", 1), // only "Naja", but it still breaks the Streak
+    ...healthyDays(["luna", "max"], "2026-11-06", "2026-11-14"),
+    sick("oma", "2026-11-08", 4), // archived: doesn't count
+    ...healthyDays(["baby"], "2026-11-12", "2026-11-14"), // counts from the first Check-in on
+  ];
+
+  // Today is still being logged: the Streak runs through yesterday until someone breaks it.
+  const pending = createHistory(members, [...checkIns, healthy("luna", "2026-11-15")]);
+  expect(pending.familyStreaks("2026-11-15")).toEqual({
+    current: { from: "2026-11-06", to: "2026-11-14", days: 9 },
+    previous: { from: "2026-11-01", to: "2026-11-04", days: 4 },
+  });
+
+  const broken = createHistory(members, [...checkIns, sick("max", "2026-11-15", 2)]);
+  expect(broken.familyStreaks("2026-11-15")).toEqual({
+    current: null,
+    previous: { from: "2026-11-06", to: "2026-11-14", days: 9 },
+  });
+
+  const complete = createHistory(members, [...checkIns, ...healthyDays(["luna", "max", "baby"], "2026-11-15", "2026-11-15")]);
+  expect(complete.familyStreaks("2026-11-15").current).toEqual({ from: "2026-11-06", to: "2026-11-15", days: 10 });
+});
+
+it("lets a Gap end the Family Streak, and knows when there was none yet", () => {
+  const checkIns = [
+    ...healthyDays(["luna", "max"], "2026-11-01", "2026-11-03"),
+    healthy("luna", "2026-11-04"), // Max has a Gap on the 4th
+    ...healthyDays(["luna", "max"], "2026-11-05", "2026-11-06"),
+  ];
+  const history = createHistory([member("luna"), member("max")], checkIns);
+
+  expect(history.familyStreaks("2026-11-06")).toEqual({
+    current: { from: "2026-11-05", to: "2026-11-06", days: 2 },
+    previous: { from: "2026-11-01", to: "2026-11-03", days: 3 },
+  });
+  expect(createHistory([member("luna")], []).familyStreaks("2026-11-06")).toEqual({ current: null, previous: null });
 });

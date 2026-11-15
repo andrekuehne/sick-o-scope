@@ -6,12 +6,16 @@
 
 import type { Severity } from "../shared/check-ins.ts";
 
+const days = (n: number) => `${n} ${n === 1 ? "Tag" : "Tage"}`;
+
 export const de = {
   /** For dates and numbers. */
   locale: "de-DE",
   appName: "Sick-o-Scope",
   appDescription: "Wer war wann krank? Das Familien-Krankheitstagebuch.",
   loading: "Einen Moment …",
+  /** Joins bits of one line, like "🤒 Richtig krank · Tag 3". */
+  joined: (parts: string[]) => parts.join(" · "),
   offlineOrError: "Das hat nicht geklappt. Bitte prüf die Verbindung und versuch es nochmal.",
   askForNewLink: "Bitte lass dir von jemandem aus deiner Familie einen neuen Anmelde-Link schicken.",
   nav: {
@@ -55,6 +59,14 @@ export const de = {
     markHealthyLabel: (name: string) => `${name} ist fit`,
     markSick: "Krank…",
     markSickLabel: (name: string) => `${name} ist krank`,
+    /** The Sick day before the selected date: "Gestern" when that's today, else "Am Vortag". */
+    previousDaySick: (isToday: boolean, severityLabel: string) =>
+      `${isToday ? "Gestern" : "Am Vortag"}: 🤒 ${severityLabel}`,
+    sickDay: (n: number) => `Tag ${n}`,
+    shortcut: { better: "Besser", same: "Gleich", worse: "Schlechter" },
+    shortcutLabel: (name: string, shortcut: string) => `${name}: ${shortcut}`,
+    familyStreak: (since: string, n: number) => `🌞 Alle fit seit ${since} (${days(n)})`,
+    previousFamilyStreak: (n: number) => `Letzte Fit-Strähne: ${days(n)}`,
     edit: (name: string) => `Eintrag von ${name} bearbeiten`,
   },
   sheet: {
