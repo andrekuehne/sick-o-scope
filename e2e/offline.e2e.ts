@@ -25,13 +25,14 @@ test("opens offline from the cache, with the last loaded data", async ({ page, c
   await signedInWithMembers(page, ["Luna"]);
   await page.getByRole("button", { name: "Luna ist fit" }).click();
   await expect(page.getByText("1 / 1 eingetragen")).toBeVisible();
-  // The service worker has the app cached once it controls the page.
-  await page.evaluate(async () => {
-    await navigator.serviceWorker.ready;
-    if (!navigator.serviceWorker.controller) {
-      await new Promise((resolve) => navigator.serviceWorker.addEventListener("controllerchange", resolve, { once: true }));
-    }
-  });
+  // The service worker has the app cached once it's active; a page loaded after that is
+  // always under its control (one loaded while it was still installing may not be yet).
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  if (!(await page.evaluate(() => navigator.serviceWorker.controller !== null))) {
+    await page.reload();
+    await expect(page.getByText("1 / 1 eingetragen")).toBeVisible();
+  }
+  await expect.poll(() => page.evaluate(() => navigator.serviceWorker.controller !== null)).toBe(true);
 
   // The loaded data is kept in this browser for offline use, written at most once a second.
   await page.waitForTimeout(1_100);
