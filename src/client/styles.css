@@ -549,3 +549,46 @@ h3 {
   color: var(--muted);
   font-size: 0.9rem;
 }
+
+/* The gap-fill card: who missed which days, then Alle fit · Wie zuletzt · Einzeln eintragen. */
+.gap-fill {
+  margin: 0 0 12px;
+  padding: 10px 10px 12px 12px;
+  border: 2px dashed var(--accent);
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+}
+
+.gap-fill-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.gap-fill-avatars {
+  display: flex;
+  flex: none;
+}
+
+.gap-fill-avatars .member-avatar + .member-avatar {
+  margin-left: -12px;
+}
+
+.gap-fill-title {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  font-weight: 600;
+}
+
+.gap-fill-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.gap-fill-actions .button {
+  flex: 1 1 auto;
+  padding: 0 12px;
+}

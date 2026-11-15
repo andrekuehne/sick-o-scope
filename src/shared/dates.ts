@@ -30,6 +30,13 @@ export function utcToday(now = new Date()): string {
   return now.toISOString().slice(0, 10);
 }
 
+/** Every date from `from` to `to`, both included. */
+export function datesBetween(from: string, to: string): string[] {
+  const dates: string[] = [];
+  for (let date = from; date <= to; date = addDays(date, 1)) dates.push(date);
+  return dates;
+}
+
 /** Days from `from` to `to`, both included (0 when `to` is before `from`). */
 export function daysBetweenInclusive(from: string, to: string): number {
   const ms = Date.parse(`${to}T00:00:00Z`) - Date.parse(`${from}T00:00:00Z`);

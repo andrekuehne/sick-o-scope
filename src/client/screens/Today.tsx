@@ -3,12 +3,15 @@ import { Link, useSearchParams } from "react-router";
 import type { Me } from "../../shared/auth.ts";
 import { addDays, isCalendarDate, localToday } from "../../shared/dates.ts";
 import type { CheckIn, CheckInState } from "../../shared/check-ins.ts";
-import { createHistory, type DayStatus, type History, type Shortcut } from "../../shared/history.ts";
+import { createHistory, type DayStatus, type History, missedDays, type Shortcut } from "../../shared/history.ts";
 import type { Member } from "../../shared/members.ts";
 import { inCatalogOrder, symptom } from "../../shared/symptoms.ts";
 import { useCheckIns, useCheckInWrites } from "../check-ins.ts";
 import { CheckInSheet } from "../components/CheckInSheet.tsx";
+import { GapFillCard } from "../components/GapFillCard.tsx";
 import { MemberAvatar } from "../components/MemberAvatar.tsx";
+import { shortDate, weekdayDate } from "../dates.ts";
+import { useDismissedGapProposals } from "../gap-fill-dismissals.ts";
 import { t } from "../strings.ts";
 
 /** How far back the screen loads Check-ins, which is as far back as Streaks can reach. */
@@ -20,6 +23,9 @@ const RECENT_DAYS = 180;
 /** The shortcuts that follow a Sick day (Besser, Gleich, Schlechter), in the order the card shows them. */
 const AFTER_SICK_DAY = ["better", "same", "worse"] as const satisfies readonly Shortcut[];
 type ShortcutOffer = { shortcut: (typeof AFTER_SICK_DAY)[number]; state: CheckInState };
+
+/** One Member's day in the editor sheet; Einzeln eintragen walks through several. */
+type SheetStep = { member: Member; date: string; startAs: CheckIn["status"] };
 
 /** The daily Check-in screen: one card per Member for the chosen date (default: today). */
 export function TodayScreen({ me }: { me: Me }) {
@@ -37,8 +43,17 @@ export function TodayScreen({ me }: { me: Me }) {
   const history = createHistory(me.members, checkIns.data ?? []);
   const day = history.day(date);
   const gaps = day.members.filter((m) => m.status.kind === "gap");
-  // The Member whose day is open in the editor sheet, if any.
-  const [editing, setEditing] = useState<{ member: Member; startAs: CheckIn["status"] } | null>(null);
+  const dismissedGaps = useDismissedGapProposals();
+  const gapProposals =
+    date === today && !checkIns.isPending ? history.gapProposals(today).filter((p) => !dismissedGaps.isDismissed(p)) : [];
+  // What the latest gap fill wrote and skipped, shown once the card is gone.
+  const [gapFillNotice, setGapFillNotice] = useState<string | null>(null);
+  // The days open in the editor sheet, one at a time, if any.
+  const [editing, setEditing] = useState<{ steps: SheetStep[]; index: number } | null>(null);
+  const step = editing?.steps[editing.index];
+  const edit = (...steps: SheetStep[]) => setEditing({ steps, index: 0 });
+  const nextStep = () =>
+    setEditing((current) => (current && current.index + 1 < current.steps.length ? { ...current, index: current.index + 1 } : null));
 
   return (
     <section className="screen">
@@ -67,6 +82,28 @@ export function TodayScreen({ me }: { me: Me }) {
             </button>
           </div>
           {!checkIns.isPending && range.to === today && <FamilyStreakLine history={history} today={today} />}
+          {gapFillNotice && date === today && (
+            <p className="notice" role="status">
+              {gapFillNotice}
+            </p>
+          )}
+          {gapProposals.map((proposal) => (
+            <GapFillCard
+              key={proposal.from}
+              proposal={proposal}
+              busy={writes.busy}
+              onFill={(fills) => {
+                setGapFillNotice(null);
+                writes.fill(fills, {
+                  onSuccess: ({ written, skipped }) => setGapFillNotice(t.gapFill.result(written.length, skipped.length)),
+                });
+              }}
+              onOneByOne={() =>
+                edit(...missedDays(proposal).map(({ member, date: missed }) => ({ member, date: missed, startAs: "healthy" as const })))
+              }
+              onDismiss={() => dismissedGaps.dismiss(proposal)}
+            />
+          ))}
 
           <ul className="day-cards">
             {day.members.map(({ member, status }) => (
@@ -81,22 +118,28 @@ export function TodayScreen({ me }: { me: Me }) {
                 busy={writes.busy}
                 onHealthy={() => writes.save({ date, memberId: member.id, state: { status: "healthy" } })}
                 onShortcut={(state) => writes.save({ date, memberId: member.id, state })}
-                onSick={() => setEditing({ member, startAs: "sick" })}
-                onEdit={() => setEditing({ member, startAs: "healthy" })}
+                onSick={() => edit({ member, date, startAs: "sick" })}
+                onEdit={() => edit({ member, date, startAs: "healthy" })}
               />
             ))}
           </ul>
         </>
       )}
-      {editing && (
+      {editing && step && (
         <CheckInSheet
-          key={`${date}|${editing.member.id}`}
-          title={t.sheet.title(editing.member.name, dayLabel(date, today))}
-          checkIn={checkIns.data?.find((c) => c.memberId === editing.member.id && c.date === date) ?? null}
-          startAs={editing.startAs}
+          key={`${step.date}|${step.member.id}`}
+          title={t.joined([
+            t.sheet.title(step.member.name, dayLabel(step.date, today)),
+            ...(editing.steps.length > 1 ? [t.sheet.step(editing.index + 1, editing.steps.length)] : []),
+          ])}
+          checkIn={checkIns.data?.find((c) => c.memberId === step.member.id && c.date === step.date) ?? null}
+          startAs={step.startAs}
           busy={writes.busy}
-          onSave={(state, done) => writes.save({ date, memberId: editing.member.id, state }, done)}
-          onDelete={(done) => writes.remove({ date, memberId: editing.member.id }, done)}
+          onSave={(state, done) =>
+            writes.save({ date: step.date, memberId: step.member.id, state }, { ...done, onSuccess: nextStep })
+          }
+          onDelete={(done) => writes.remove({ date: step.date, memberId: step.member.id }, { ...done, onSuccess: nextStep })}
+          onSkip={editing.steps.length > 1 ? nextStep : undefined}
           onClose={() => setEditing(null)}
         />
       )}
@@ -298,13 +341,7 @@ function DateBar({ date, today, onChange }: { date: string; today: string; onCha
 function dayLabel(date: string, today: string): string {
   if (date === today) return `${t.today.todayPrefix}, ${shortDate(date)}`;
   if (date === addDays(today, -1)) return `${t.today.yesterdayPrefix}, ${shortDate(date)}`;
-  return new Intl.DateTimeFormat(t.locale, { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" }).format(
-    utcDate(date),
-  );
-}
-
-function shortDate(date: string): string {
-  return new Intl.DateTimeFormat(t.locale, { day: "numeric", month: "short", timeZone: "UTC" }).format(utcDate(date));
+  return weekdayDate(date);
 }
 
 /** Today's local date, kept current across midnight and when the app comes back to the front. */
@@ -320,8 +357,4 @@ function useLocalToday(): string {
     };
   }, []);
   return today;
-}
-
-function utcDate(date: string): Date {
-  return new Date(`${date}T00:00:00Z`);
 }

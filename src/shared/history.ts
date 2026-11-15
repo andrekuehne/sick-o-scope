@@ -3,7 +3,7 @@
 // A Gap (no Check-in) is always its own status, never Healthy.
 
 import type { CheckIn, CheckInState, Severity } from "./check-ins.ts";
-import { addDays, daysBetweenInclusive } from "./dates.ts";
+import { addDays, datesBetween, daysBetweenInclusive } from "./dates.ts";
 import type { Member } from "./members.ts";
 import type { SymptomKey } from "./symptoms.ts";
 
@@ -32,6 +32,21 @@ export type FamilyStreak = { from: string; to: string; days: number };
  */
 export type Shortcut = "like-yesterday" | "same" | "better" | "worse";
 
+/** How far back the gap-fill card looks: Gaps that began earlier (a long break) never prompt. */
+export const GAP_FILL_DAYS = 14;
+
+/**
+ * Days that Members missed since their last Check-in before today (today itself is left
+ * to the day cards), offered for filling. Members with the same missed days share one
+ * proposal. `last` is each Member's last Check-in, without its note, for Wie zuletzt.
+ */
+export type GapProposal = {
+  from: string;
+  to: string;
+  days: number;
+  members: { member: Member; last: CheckInState }[];
+};
+
 export type History = {
   statusOf(memberId: string, date: string): DayStatus;
   day(date: string): FamilyDay;
@@ -45,6 +60,8 @@ export type History = {
    * Archived Members don't count, and a Member only counts from their first Check-in on.
    */
   familyStreaks(date: string): { current: FamilyStreak | null; previous: FamilyStreak | null };
+  /** The Gaps from each Member's last Check-in before `today` up to yesterday, if they began at most 14 days back. */
+  gapProposals(today: string): GapProposal[];
 };
 
 export function createHistory(members: Member[], checkIns: CheckIn[]): History {
@@ -122,8 +139,42 @@ export function createHistory(members: Member[], checkIns: CheckIn[]): History {
     return { current, previous: cursor >= earliest ? familyStreakEndingOn(cursor) : null };
   }
 
-  return { statusOf, day, memberStreak, shortcut, familyStreaks };
+  function gapProposals(today: string): GapProposal[] {
+    // Every run of Gaps ends yesterday, so runs that start on the same day are the same.
+    const byFirstMissedDay = new Map<string, GapProposal>();
+    const to = addDays(today, -1);
+    for (const member of active) {
+      const last = lastCheckInBefore(member.id, today);
+      if (!last) continue;
+      const from = addDays(last.date, 1);
+      if (from > to || from < addDays(today, -GAP_FILL_DAYS)) continue;
+      const proposal = byFirstMissedDay.get(from) ?? { from, to, days: daysBetweenInclusive(from, to), members: [] };
+      proposal.members.push({ member, last: withoutNote(last) });
+      byFirstMissedDay.set(from, proposal);
+    }
+    return [...byFirstMissedDay.values()];
+  }
+
+  function lastCheckInBefore(memberId: string, date: string): CheckIn | undefined {
+    let last: CheckIn | undefined;
+    for (const c of checkIns) if (c.memberId === memberId && c.date < date && (!last || c.date > last.date)) last = c;
+    return last;
+  }
+
+  return { statusOf, day, memberStreak, shortcut, familyStreaks, gapProposals };
 }
+
+/** Every missed day of every Member in a proposal, day by day. */
+export function missedDays(proposal: GapProposal): { member: Member; last: CheckInState; date: string }[] {
+  return datesBetween(proposal.from, proposal.to).flatMap((date) => proposal.members.map((m) => ({ ...m, date })));
+}
+
+/** A Check-in's state to copy onto another day: everything but the note. */
+function withoutNote(checkIn: CheckIn): CheckInState {
+  if (checkIn.status === "healthy") return { status: "healthy", note: null };
+  return { status: "sick", severity: checkIn.severity, symptoms: [...checkIn.symptoms], note: null };
+}
+
 
 /** The first day of the Streak ending on `to`, given which days belong to it. */
 function streakStart(to: string, belongs: (date: string) => boolean): string {

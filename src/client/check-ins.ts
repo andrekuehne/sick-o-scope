@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
-import type { CheckInStateInput, FillGapsRequest } from "../shared/check-ins.ts";
+import type { CheckInStateInput, FillGapsRequest, FillGapsResult } from "../shared/check-ins.ts";
 import { deleteCheckIn, fetchCheckIns, fillGaps, saveCheckIn } from "./api.ts";
 
 const checkInsKey = (familyId: string) => ["check-ins", familyId] as const;
@@ -14,7 +14,7 @@ export function useCheckIns(familyId: string, from: string, to: string) {
 }
 
 /** Called after this one write: on success once the refreshed Check-ins are in. */
-export type WriteCallbacks = { onSuccess?: () => void; onError?: () => void };
+export type WriteCallbacks<Result = unknown> = { onSuccess?: (result: Result) => void; onError?: () => void };
 
 /**
  * Writing Check-ins. Every write refreshes whatever Check-ins are on screen, and stays
@@ -49,9 +49,10 @@ export function useCheckInWrites(familyId: string) {
       setLatest("remove");
       remove.mutate(args, callbacks);
     },
-    fill: (checkIns: Parameters<typeof fill.mutate>[0]) => {
+    /** Writes only into Gaps; the result says which days were written and which already had a Check-in. */
+    fill: (checkIns: Parameters<typeof fill.mutate>[0], callbacks?: WriteCallbacks<FillGapsResult>) => {
       setLatest("fill");
-      fill.mutate(checkIns);
+      fill.mutate(checkIns, callbacks);
     },
     busy: save.isPending || remove.isPending || fill.isPending,
     failed: latest !== null && byName[latest].isError,

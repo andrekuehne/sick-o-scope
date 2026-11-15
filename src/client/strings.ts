@@ -7,6 +7,7 @@
 import type { Severity } from "../shared/check-ins.ts";
 
 const days = (n: number) => `${n} ${n === 1 ? "Tag" : "Tage"}`;
+const checkInCount = (n: number) => `${n} ${n === 1 ? "Eintrag" : "Einträge"}`;
 
 export const de = {
   /** For dates and numbers. */
@@ -69,6 +70,18 @@ export const de = {
     previousFamilyStreak: (n: number) => `Letzte Fit-Strähne: ${days(n)}`,
     edit: (name: string) => `Eintrag von ${name} bearbeiten`,
   },
+  gapFill: {
+    /** "Luna: 3 Tage fehlen (12.–14. Nov.)" */
+    title: (names: string, n: number, range: string) => `${names}: ${n === 1 ? "1 Tag fehlt" : `${n} Tage fehlen`} (${range})`,
+    allHealthy: "Alle fit",
+    likeLast: "Wie zuletzt",
+    oneByOne: "Einzeln eintragen",
+    dismiss: "Ausblenden",
+    /** What fill-gaps did: days it wrote, and days someone had logged in the meantime. */
+    result: (written: number, skipped: number) =>
+      `✅ ${checkInCount(written)} gespeichert.` +
+      (skipped > 0 ? ` ${checkInCount(skipped)} gab es schon, ${skipped === 1 ? "der blieb" : "die blieben"} unverändert.` : ""),
+  },
   sheet: {
     title: (name: string, day: string) => `${name} · ${day}`,
     status: "Wie geht’s?",
@@ -83,6 +96,9 @@ export const de = {
     save: "Speichern",
     deleteCheckIn: "Eintrag löschen",
     cancel: "Abbrechen",
+    skip: "Überspringen",
+    /** Where Einzeln eintragen is: "2 von 3". */
+    step: (n: number, of: number) => `${n} von ${of}`,
   },
   severity: {
     1: "Naja",

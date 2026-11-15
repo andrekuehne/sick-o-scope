@@ -162,3 +162,51 @@ it("lets a Gap end the Family Streak, and knows when there was none yet", () => 
   });
   expect(createHistory([member("luna")], []).familyStreaks("2026-11-06")).toEqual({ current: null, previous: null });
 });
+
+it("proposes filling the Gaps since a Member's last Check-in before today, but not Gaps in the middle", () => {
+  const history = createHistory(
+    [member("luna"), member("max")],
+    [
+      healthy("luna", "2026-11-08"), // a Gap on the 9th, in the middle: no proposal for it
+      { ...sick("luna", "2026-11-10", 2, ["cough"]), note: "beim Arzt" },
+      healthy("luna", "2026-11-15"), // today's already logged; the missed days still count
+      ...healthyDays(["max"], "2026-11-08", "2026-11-14"),
+    ],
+  );
+
+  expect(history.gapProposals("2026-11-15")).toEqual([
+    {
+      from: "2026-11-11",
+      to: "2026-11-14",
+      days: 4,
+      members: [{ member: member("luna"), last: { status: "sick", severity: 2, symptoms: ["cough"], note: null } }],
+    },
+  ]);
+});
+
+it("prompts only for Gaps that began at most 14 days back, skips Members with no Check-ins and archived ones, and combines shared Gaps", () => {
+  const history = createHistory(
+    [member("luna"), member("tom"), member("ben"), member("oma", true), member("max"), member("lia")],
+    [
+      healthy("luna", "2026-10-31"), // missing from 1 Nov on: exactly 14 days
+      healthy("tom", "2026-10-30"), // missing for 15 days: a long break never prompts
+      healthy("oma", "2026-11-12"),
+      sick("max", "2026-11-12", 3),
+      healthy("lia", "2026-11-12"),
+    ],
+  );
+
+  expect(history.gapProposals("2026-11-15")).toEqual([
+    { from: "2026-11-01", to: "2026-11-14", days: 14, members: [{ member: member("luna"), last: { status: "healthy", note: null } }] },
+    {
+      from: "2026-11-13",
+      to: "2026-11-14",
+      days: 2,
+      members: [
+        { member: member("max"), last: { status: "sick", severity: 3, symptoms: [], note: null } },
+        { member: member("lia"), last: { status: "healthy", note: null } },
+      ],
+    },
+  ]);
+  expect(createHistory([member("luna")], [healthy("luna", "2026-11-14")]).gapProposals("2026-11-15")).toEqual([]);
+});

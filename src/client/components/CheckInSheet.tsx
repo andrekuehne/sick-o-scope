@@ -22,6 +22,7 @@ export function CheckInSheet({
   busy,
   onSave,
   onDelete,
+  onSkip,
   onClose,
 }: {
   title: string;
@@ -33,6 +34,8 @@ export function CheckInSheet({
   /** Both take callbacks for when the write is done (and the screen refreshed) or failed. */
   onSave: (state: CheckInState, done: WriteCallbacks) => void;
   onDelete: (done: WriteCallbacks) => void;
+  /** When walking through several days: go on to the next one without saving this one. */
+  onSkip?: () => void;
   onClose: () => void;
 }) {
   const dialog = useRef<HTMLDialogElement>(null);
@@ -172,6 +175,11 @@ export function CheckInSheet({
               }}
             >
               {t.sheet.deleteCheckIn}
+            </button>
+          )}
+          {onSkip && (
+            <button type="button" className="button" disabled={busy} onClick={onSkip}>
+              {t.sheet.skip}
             </button>
           )}
           <button type="button" className="button" onClick={() => dialog.current?.close()}>
