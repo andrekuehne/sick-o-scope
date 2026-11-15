@@ -22,60 +22,78 @@ export function tapTimingEnabled(): boolean {
 }
 
 type Tap = {
+  id: number;
   target: string;
-  /** All in ms after the finger touched down, as the OS reported it (event.timeStamp). */
-  downHandled: number;
+  /** The finger touched down, as the OS reported it (event.timeStamp); everything below is ms after that. */
+  down: number;
+  arrived: number;
   up?: number;
-  clickHandled?: number;
+  click?: number;
   screenChanged?: number;
   painted?: number;
-  /** Main-thread tasks over 50 ms during the tap, in ms. */
+  /** Chrome's own measure: until the frame after the touch was actually shown on the display. */
+  shown?: number;
   longTasks: number[];
 };
 
+let nextId = 0;
+
 export function TapTiming() {
   const [taps, setTaps] = useState<Tap[]>([]);
-  const current = useRef<{ down: number; tap: Tap } | null>(null);
+  const current = useRef<Tap | null>(null);
   const location = useLocation();
 
   useEffect(() => {
-    const update = () => {
-      const c = current.current;
-      if (c) setTaps((list) => [{ ...c.tap }, ...list.filter((t) => t !== c.tap)].slice(0, 6));
-    };
+    // One row per tap, updated in place as its numbers come in.
+    const update = (tap: Tap) =>
+      setTaps((list) => [{ ...tap }, ...list.filter((t) => t.id !== tap.id)].sort((a, b) => b.id - a.id).slice(0, 6));
     const label = (target: EventTarget | null) => {
       const el = (target as Element | null)?.closest("a, button, label, input");
-      return (el?.getAttribute("aria-label") || el?.textContent || el?.tagName || "?").trim().slice(0, 18);
+      return (el?.getAttribute("aria-label") || el?.textContent || el?.tagName || "?").trim().slice(0, 16);
     };
     const onDown = (e: PointerEvent) => {
-      const tap: Tap = { target: label(e.target), downHandled: Math.round(performance.now() - e.timeStamp), longTasks: [] };
-      current.current = { down: e.timeStamp, tap };
-      update();
+      const tap: Tap = { id: nextId++, target: label(e.target), down: e.timeStamp, arrived: Math.round(performance.now() - e.timeStamp), longTasks: [] };
+      current.current = tap;
+      update(tap);
     };
-    const since = (e: Event) => Math.round(e.timeStamp - (current.current?.down ?? e.timeStamp));
     const onUp = (e: PointerEvent) => {
-      if (current.current) current.current.tap.up = since(e);
-      update();
+      const tap = current.current;
+      if (tap) update(Object.assign(tap, { up: Math.round(e.timeStamp - tap.down) }));
     };
-    const onClick = (e: MouseEvent) => {
-      if (current.current) current.current.tap.clickHandled = Math.round(performance.now() - current.current.down);
-      void e;
-      update();
+    const onClick = () => {
+      const tap = current.current;
+      if (tap) update(Object.assign(tap, { click: Math.round(performance.now() - tap.down) }));
     };
     document.addEventListener("pointerdown", onDown, { capture: true });
     document.addEventListener("pointerup", onUp, { capture: true });
     document.addEventListener("click", onClick, { capture: true });
-    let observer: PerformanceObserver | undefined;
+
+    const observers: PerformanceObserver[] = [];
     try {
-      observer = new PerformanceObserver((list) => {
-        const c = current.current;
-        if (!c) return;
+      const events = new PerformanceObserver((list) => {
         for (const entry of list.getEntries()) {
-          if (entry.startTime + entry.duration >= c.down - 200) c.tap.longTasks.push(Math.round(entry.duration));
+          const tap = current.current;
+          if (entry.name === "pointerdown" && tap && Math.abs(entry.startTime - tap.down) < 2) {
+            update(Object.assign(tap, { shown: Math.round(entry.duration) }));
+          }
         }
-        update();
       });
-      observer.observe({ type: "longtask" });
+      events.observe({ type: "event", durationThreshold: 16, buffered: false } as PerformanceObserverInit);
+      observers.push(events);
+    } catch {
+      // No event timing in this browser.
+    }
+    try {
+      const longTasks = new PerformanceObserver((list) => {
+        const tap = current.current;
+        if (!tap) return;
+        for (const entry of list.getEntries()) {
+          if (entry.startTime + entry.duration >= tap.down - 200) tap.longTasks.push(Math.round(entry.duration));
+        }
+        update(tap);
+      });
+      longTasks.observe({ type: "longtask" });
+      observers.push(longTasks);
     } catch {
       // No long task timing in this browser.
     }
@@ -83,30 +101,30 @@ export function TapTiming() {
       document.removeEventListener("pointerdown", onDown, { capture: true });
       document.removeEventListener("pointerup", onUp, { capture: true });
       document.removeEventListener("click", onClick, { capture: true });
-      observer?.disconnect();
+      for (const observer of observers) observer.disconnect();
     };
   }, []);
 
-  // A new screen: when React committed it, and when the frame after it was drawn.
+  // A new screen: when React committed it, and when the frame after it was handed over.
   useLayoutEffect(() => {
-    const c = current.current;
-    if (!c) return;
-    c.tap.screenChanged = Math.round(performance.now() - c.down);
+    const tap = current.current;
+    if (!tap) return;
+    tap.screenChanged = Math.round(performance.now() - tap.down);
     requestAnimationFrame(() =>
       setTimeout(() => {
-        c.tap.painted = Math.round(performance.now() - c.down);
-        setTaps((list) => [{ ...c.tap }, ...list.filter((t) => t.target !== c.tap.target || t.downHandled !== c.tap.downHandled)].slice(0, 6));
+        tap.painted = Math.round(performance.now() - tap.down);
+        setTaps((list) => [{ ...tap }, ...list.filter((t) => t.id !== tap.id)].sort((a, b) => b.id - a.id).slice(0, 6));
       }, 0),
     );
   }, [location.pathname, location.search]);
 
   return (
     <div className="tap-timing" aria-hidden="true">
-      <div>Messung (ms nach Fingerkontakt): ↓ angekommen · ↑ losgelassen · Klick · Bildschirm · gezeichnet · lange Aufgaben</div>
-      {taps.map((tap, i) => (
-        <div key={i}>
-          {tap.target}: ↓{tap.downHandled} · ↑{tap.up ?? "–"} · K{tap.clickHandled ?? "–"} · B{tap.screenChanged ?? "–"} · G
-          {tap.painted ?? "–"} · L[{tap.longTasks.join(",")}]
+      <div>ms nach Fingerkontakt: ↓ angekommen · B Bildschirm · G übergeben · S sichtbar (Chrome) · ↑ los · K Klick · L lang</div>
+      {taps.map((tap) => (
+        <div key={tap.id}>
+          {tap.target}: ↓{tap.arrived} · B{tap.screenChanged ?? "–"} · G{tap.painted ?? "–"} · S{tap.shown ?? "<16"} · ↑
+          {tap.up ?? "–"} · K{tap.click ?? "–"} · L[{tap.longTasks.join(",")}]
         </div>
       ))}
     </div>
