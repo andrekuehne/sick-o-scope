@@ -91,9 +91,21 @@ Migrations must be additive (add tables and columns; drop or rename only in a la
 
 GitHub Actions (`.github/workflows/ci.yml`): every push and pull request runs the typecheck, the API tests, a production build and the end-to-end tests. A push to `main` that passes all of them then applies the remote migrations, builds, and deploys.
 
-The deploy job runs in the GitHub environment `production` (Settings → Environments), which needs two secrets:
+The deploy job runs in the GitHub environment `production` (Settings → Environments), which needs three secrets:
 
 - `CLOUDFLARE_ACCOUNT_ID`: shown by `npx wrangler whoami`.
 - `CLOUDFLARE_API_TOKEN`: Cloudflare dashboard → My Profile → API Tokens → Create Token → template **Edit Cloudflare Workers**, add **Account → D1 → Edit**, remove the zone row, limit to this account.
 
-Set them with `gh secret set CLOUDFLARE_API_TOKEN --env production` (and the same for the account ID).
+- `VAPID_PRIVATE_KEY`: see [Reminders](#reminders); the deploy hands it to the Worker as a secret.
+
+Set them with `gh secret set CLOUDFLARE_API_TOKEN --env production` (and the same for the others).
+
+## Reminders
+
+Each Device can get a daily push notification (Einstellungen → Erinnerung). A Cron Trigger (`wrangler.jsonc` → `triggers`) runs every 15 minutes and sends the Reminders that are due (`src/worker/reminders/`). The pushes carry no content: the service worker shows a fixed text (`public/push-sw.js`), so no health data goes through the browsers' push services.
+
+Pushes are signed with a VAPID key pair. The public key is `VAPID_PUBLIC_KEY` in `wrangler.jsonc`; the private key (the P-256 key's `d`, base64url) is the Worker secret `VAPID_PRIVATE_KEY`, kept in the GitHub environment `production`. Without it, the job logs a warning and sends nothing (as in local development; copy `.dev.vars.example` to `.dev.vars` to set one there).
+
+To replace the key pair, generate a new one, put the public key into `wrangler.jsonc` and the private one into `production`, and deploy. Existing subscriptions belong to the old key, so every Device has to switch its Reminder off and on again.
+
+Reminders only work where the service worker runs, which is in production builds (`npm run preview` or the deployed app), and need notification permission on the phone.

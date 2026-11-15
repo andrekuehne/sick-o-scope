@@ -3,6 +3,7 @@ import { useState } from "react";
 import type { Me } from "../../shared/auth.ts";
 import type { Member, MemberInput } from "../../shared/members.ts";
 import { MemberAvatar } from "../components/MemberAvatar.tsx";
+import { ReminderSettings } from "../components/ReminderSettings.tsx";
 import { UsersSettings } from "../components/UsersSettings.tsx";
 import { addMember, exportCsvUrl, reorderMembers, setMemberArchived, signOut, updateMember } from "../api.ts";
 import { MEMBER_COLOURS, MEMBER_EMOJIS, firstUnused } from "../member-options.ts";
@@ -17,6 +18,7 @@ export function SettingsScreen({ me }: { me: Me }) {
       <h1>{t.settings.title}</h1>
       <p className="muted">{t.settings.signedInAs(me.user.name, me.family.name)}</p>
       <MembersSettings me={me} />
+      <ReminderSettings familyId={me.family.id} />
       <UsersSettings me={me} />
       <h2>{t.settings.exportTitle}</h2>
       <p className="muted">{t.settings.exportIntro}</p>

@@ -280,7 +280,8 @@ h3 {
   font-weight: 600;
 }
 
-.field input {
+.field input,
+.field select {
   min-height: 44px;
   padding: 0 12px;
   border: 1px solid var(--border);
@@ -289,6 +290,25 @@ h3 {
   color: var(--text);
   font: inherit;
   font-weight: 400;
+}
+
+.reminder-card .field {
+  margin-bottom: 0;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.toggle-row input {
+  width: 24px;
+  height: 24px;
+  accent-color: var(--accent);
 }
 
 .choice-grid {

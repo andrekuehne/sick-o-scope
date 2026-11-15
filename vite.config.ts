@@ -45,6 +45,8 @@ export default defineConfig({
         skipWaiting: true,
         clientsClaim: true,
         cleanupOutdatedCaches: true,
+        // Shows Reminders and opens Heute when one is tapped (public/push-sw.js).
+        importScripts: ["/push-sw.js"],
       },
     }),
   ],

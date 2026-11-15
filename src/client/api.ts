@@ -10,6 +10,7 @@ import {
   FillGapsResult,
 } from "../shared/check-ins.ts";
 import { Member, type MemberInput } from "../shared/members.ts";
+import { type ReminderInput, ThisDeviceReminder } from "../shared/reminders.ts";
 import { FamilyUsers, SignInLinkCreated, type SignInLinkRequest } from "../shared/users.ts";
 
 /** Who is signed in on this Device, or null when nobody is (or the session ended). */
@@ -125,6 +126,26 @@ export async function signOutFamilyDevice(familyId: string, deviceId: string): P
 export async function removeUser(familyId: string, userId: string): Promise<void> {
   const res = await fetch(`${familyPath(familyId)}/users/${encodeURIComponent(userId)}`, { method: "DELETE" });
   if (!res.ok) throw new Error(`DELETE user failed: ${res.status}`);
+}
+
+const reminderPath = (familyId: string) => `${familyPath(familyId)}/reminder`;
+
+/** This Device's Reminder, and the key to subscribe to pushes with. */
+export async function fetchReminder(familyId: string): Promise<ThisDeviceReminder> {
+  const res = await fetch(reminderPath(familyId));
+  if (!res.ok) throw new Error(`GET reminder failed: ${res.status}`);
+  return ThisDeviceReminder.parse(await res.json());
+}
+
+/** Switches on or changes this Device's Reminder. */
+export async function saveReminder(familyId: string, input: ReminderInput): Promise<void> {
+  await sendJson("PUT", reminderPath(familyId), input);
+}
+
+/** Switches off this Device's Reminder. */
+export async function deleteReminder(familyId: string): Promise<void> {
+  const res = await fetch(reminderPath(familyId), { method: "DELETE" });
+  if (!res.ok) throw new Error(`DELETE reminder failed: ${res.status}`);
 }
 
 /** Where the Family's Check-ins download as a CSV file. */

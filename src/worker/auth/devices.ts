@@ -90,6 +90,14 @@ export async function devicesOfFamily(db: D1Database, familyId: string, now: Dat
   return results.map((r) => ({ id: r.id, userId: r.user_id, label: r.label, lastSeenAt: r.last_seen_at }));
 }
 
+/**
+ * A subquery for other modules: every signed-in Device with each Family its User belongs
+ * to, as (device_id, family_id). It takes one parameter, the current time.
+ */
+export const SIGNED_IN_FAMILY_DEVICES_SQL = `SELECT d.id AS device_id, fu.family_id FROM devices d
+  JOIN family_users fu ON fu.user_id = d.user_id
+  WHERE d.expires_at > ?`;
+
 /** Signs out one of the Family's Devices. False when the Family has no such Device. */
 export async function signOutFamilyDevice(db: D1Database, familyId: string, deviceId: string): Promise<boolean> {
   const deleted = await db

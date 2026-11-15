@@ -179,6 +179,14 @@ export const de = {
       cancel: "Abbrechen",
     },
   },
+  reminder: {
+    title: "Erinnerung",
+    intro: "Eine tägliche Benachrichtigung auf diesem Gerät, wenn heute noch nicht alle eingetragen sind.",
+    on: "Täglich erinnern",
+    time: "Uhrzeit",
+    blocked: "Benachrichtigungen sind für diese App blockiert. Du kannst sie in den Einstellungen des Handys erlauben.",
+    unavailable: "Auf diesem Gerät gehen keine Erinnerungen. Installier die App auf dem Handy, dann klappt's.",
+  },
   users: {
     title: "Geräte & Zugang",
     intro: "Wer hier steht, kann für alle eintragen, Geräte abmelden und Leute entfernen.",

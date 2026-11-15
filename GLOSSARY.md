@@ -20,6 +20,10 @@ _Avoid_: Account, login, member (as a role)
 A phone or browser where a User is signed in. A User can have several, and each can be signed out on its own.
 _Avoid_: Session, client
 
+**Reminder**:
+A daily notification on one Device, at a time of day chosen for that Device, sent only while an active Member still has a Gap on that day. Each Device has at most one. (The German UI says "Erinnerung".)
+_Avoid_: Alarm, notification (as the setting)
+
 **Sign-in link**:
 A one-time link, created by a User and shared directly, that signs in a new Device: either for an existing User or for a new User joining the Family.
 _Avoid_: Invite, magic link, login link

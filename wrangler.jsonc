@@ -14,6 +14,14 @@
     "not_found_handling": "single-page-application",
     "run_worker_first": ["/api/*"]
   },
+  // Reminders (src/worker/reminders): every 15 minutes, the job sends those that are due.
+  "triggers": { "crons": ["*/15 * * * *"] },
+  "vars": {
+    // VAPID identifies this app to the browsers' push services. The public key is public;
+    // the private key is the Worker secret VAPID_PRIVATE_KEY (README → "Reminders").
+    "VAPID_PUBLIC_KEY": "BBv8ozQrUfnGkopYUWDlyjlboyx88Da0rG2-wdSWzIk1jHpOhtbeRYJHnzlctozZ_6ECyx5UKqAIuhhwlEAtQHI",
+    "VAPID_SUBJECT": "https://sick-o-scope.mail-4a4.workers.dev"
+  },
   "d1_databases": [
     {
       "binding": "DB",

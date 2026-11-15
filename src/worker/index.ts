@@ -5,6 +5,8 @@ import type { ServiceStatus } from "../shared/service-status.ts";
 import type { AppEnv } from "./app-env.ts";
 import { authRoutes } from "./auth/routes.ts";
 import { familyRoutes } from "./families/routes.ts";
+import { sendDueReminders } from "./reminders/reminder-job.ts";
+import { webPushSender } from "./reminders/web-push.ts";
 
 // The Worker only ever sees /api/* (wrangler.jsonc: run_worker_first);
 // everything else is the SPA, served as static assets (ADR 0001).
@@ -34,4 +36,18 @@ app.notFound((c) => c.json({ error: "not_found" }, 404));
 
 export default {
   fetch: app.fetch,
+  // The Reminders' job (wrangler.jsonc: triggers). Its scheduled time, not the moment it
+  // happens to start, decides which quarter hour it is.
+  async scheduled(controller, env) {
+    if (!env.VAPID_PRIVATE_KEY) {
+      console.warn("VAPID_PRIVATE_KEY isn't set: no Reminders are sent");
+      return;
+    }
+    const sendPush = webPushSender({
+      publicKey: env.VAPID_PUBLIC_KEY,
+      privateKey: env.VAPID_PRIVATE_KEY,
+      subject: env.VAPID_SUBJECT,
+    });
+    await sendDueReminders(env.DB, new Date(controller.scheduledTime), sendPush);
+  },
 } satisfies ExportedHandler<Env>;

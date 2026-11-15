@@ -4,6 +4,7 @@ import { requireUser } from "../auth/current-user.ts";
 import { checkInRoutes } from "../check-ins/routes.ts";
 import { exportRoutes } from "../export/routes.ts";
 import { memberRoutes } from "../members/routes.ts";
+import { reminderRoutes } from "../reminders/routes.ts";
 import { userRoutes } from "../users/routes.ts";
 import { requireFamily } from "./require-family.ts";
 
@@ -19,3 +20,4 @@ familyRoutes.route("/members", memberRoutes);
 familyRoutes.route("/check-ins", checkInRoutes);
 familyRoutes.route("/", userRoutes);
 familyRoutes.route("/", exportRoutes);
+familyRoutes.route("/", reminderRoutes);
