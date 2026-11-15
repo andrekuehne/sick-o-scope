@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { Link, NavLink, Route, Routes, useNavigate } from "react-router";
+import { Link, NavLink, Route, Routes, useLocation, useNavigate } from "react-router";
 import { useMe } from "./me.ts";
 import { forgetOfflineData } from "./offline-data.ts";
 import { useOnline } from "./online.ts";
@@ -9,7 +9,7 @@ import { SignInScreen } from "./screens/SignIn.tsx";
 import { TimelineScreen } from "./screens/Timeline.tsx";
 import { TodayScreen } from "./screens/Today.tsx";
 import { t } from "./strings.ts";
-import { replaceTabHistory, TapTiming, tapTimingEnabled } from "./tap-timing.tsx";
+import { TapTiming, tapTimingEnabled } from "./tap-timing.tsx";
 
 // TEMPORARY [DEBUG-messen]: see tap-timing.tsx.
 const measuring = tapTimingEnabled();
@@ -113,24 +113,28 @@ function Frame({ nav = false, children }: { nav?: boolean; children: React.React
 }
 
 /**
- * A tab in the bottom bar. Like a native tab bar, it switches as soon as it's touched rather
- * than when the finger lifts (and before Chrome shows its delayed pressed state): the bar
- * never scrolls, so a touch there is always a tap. The click that follows lands on the same
- * screen and replaces it, so it adds no history entry; keyboard and mouse use it as before.
+ * A tab in the bottom bar, switched like a native tab bar:
+ * - as soon as it's touched, not when the finger lifts (the bar never scrolls, so a touch
+ *   there is always a tap, and Chrome's pressed state would come late anyway);
+ * - without a new history entry, so Back leaves the app instead of stepping through tabs.
+ *   That's also faster: on Android, Chrome does ~400 ms of extra work for every new entry
+ *   before the next frame shows (measured on a Pixel 8 Pro).
+ * The click that follows the touch lands on the same tab and changes nothing; keyboard and
+ * mouse use that click as before.
  */
 function NavItem({ to, icon, label }: { to: string; icon: string; label: string }) {
   const navigate = useNavigate();
+  const { pathname } = useLocation();
   return (
     <NavLink
       to={to}
       end
+      replace
       className="app-nav-item"
       onPointerDown={(event) => {
-        if (event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
-          navigate(to, { replace: replaceTabHistory });
-        }
+        const plain = event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey;
+        if (plain && pathname !== to) navigate(to, { replace: true });
       }}
-      replace={replaceTabHistory || undefined}
     >
       <span className="app-nav-icon" aria-hidden="true">
         {icon}

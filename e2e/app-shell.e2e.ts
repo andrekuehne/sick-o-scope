@@ -15,21 +15,27 @@ test("navigates between the main screens, also by deep link", async ({ page }) =
   await expect(page.getByRole("heading", { name: "Einstellungen" })).toBeVisible();
 });
 
-// Regression: on the phone, switching screens waited for the finger to lift (plus Chrome's
-// delayed pressed state), which felt sluggish. Like a native tab bar, it now switches on touch.
-test("switches screens as soon as the bottom bar is touched, before the finger lifts", async ({ page }) => {
+// Regression: on the phone (Pixel 8 Pro), switching screens took ~450 ms to show: it waited
+// for the finger to lift, and each new history entry made Chrome do ~400 ms of extra work
+// before the next frame. Like a native tab bar, it now switches on touch, without history.
+test("switches screens as soon as the bottom bar is touched, without adding history entries", async ({ page }) => {
   await page.goto(await newFamilySignInLink("Familie Kühne", "André"));
   await page.getByRole("button", { name: "Anmelden" }).click();
   await expect(page.getByRole("heading", { name: "Hallo André 👋" })).toBeVisible();
+  const entries = await page.evaluate(() => history.length);
+  const nav = page.getByRole("navigation", { name: "Hauptnavigation" });
 
-  await page.getByRole("navigation", { name: "Hauptnavigation" }).getByRole("link", { name: "Verlauf" }).hover();
+  await nav.getByRole("link", { name: "Verlauf" }).hover();
   await page.mouse.down();
   await expect(page.getByRole("heading", { name: "Verlauf" })).toBeVisible();
   await page.mouse.up();
   await expect(page).toHaveURL(/\/verlauf$/);
-  // Lifting the finger on the same tab doesn't add a second history entry: Back leaves Verlauf.
-  await page.goBack();
-  await expect(page.getByRole("heading", { name: "Hallo André 👋" })).toBeVisible();
+  await nav.getByRole("link", { name: "Einstellungen" }).click();
+  await expect(page.getByRole("heading", { name: "Einstellungen" })).toBeVisible();
+  await nav.getByRole("link", { name: "Einstellungen" }).click();
+
+  // Like an app: tabs aren't steps back.
+  expect(await page.evaluate(() => history.length)).toBe(entries);
 });
 
 test("without signing in, the app asks for a Sign-in link", async ({ page }) => {

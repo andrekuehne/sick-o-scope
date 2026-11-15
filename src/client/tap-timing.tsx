@@ -8,22 +8,6 @@ import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { useLocation } from "react-router";
 
 const FLAG = "sick-o-scope:messen";
-const REPLACE_FLAG = "sick-o-scope:messen-ersetzen";
-
-/**
- * Experiment: with ?ersetzen=1 (off with ?ersetzen=0), the bottom bar replaces the history
- * entry instead of adding one, to test whether Chrome's per-navigation work causes the delay.
- */
-export const replaceTabHistory: boolean = (() => {
-  try {
-    const param = new URLSearchParams(window.location.search).get("ersetzen");
-    if (param === "1") localStorage.setItem(REPLACE_FLAG, "1");
-    if (param === "0") localStorage.removeItem(REPLACE_FLAG);
-    return localStorage.getItem(REPLACE_FLAG) === "1";
-  } catch {
-    return false;
-  }
-})();
 
 /** Reads ?messen=1 / ?messen=0 once at startup, and whether measuring is on. */
 export function tapTimingEnabled(): boolean {
@@ -136,10 +120,7 @@ export function TapTiming() {
 
   return (
     <div className="tap-timing" aria-hidden="true">
-      <div>
-        Modus: {replaceTabHistory ? "ERSETZEN" : "normal"} · ms nach Fingerkontakt: ↓ angekommen · B Bildschirm · G übergeben · S
-        sichtbar (Chrome) · ↑ los · K Klick · L lang
-      </div>
+      <div>ms nach Fingerkontakt: ↓ angekommen · B Bildschirm · G übergeben · S sichtbar (Chrome) · ↑ los · K Klick · L lang</div>
       {taps.map((tap) => (
         <div key={tap.id}>
           {tap.target}: ↓{tap.arrived} · B{tap.screenChanged ?? "–"} · G{tap.painted ?? "–"} · S{tap.shown ?? "<16"} · ↑
