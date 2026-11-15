@@ -9,21 +9,14 @@ import { SignInScreen } from "./screens/SignIn.tsx";
 import { TimelineScreen } from "./screens/Timeline.tsx";
 import { TodayScreen } from "./screens/Today.tsx";
 import { t } from "./strings.ts";
-import { TapTiming, tapTimingEnabled } from "./tap-timing.tsx";
-
-// TEMPORARY [DEBUG-messen]: see tap-timing.tsx.
-const measuring = tapTimingEnabled();
 
 export function App() {
   return (
-    <>
-      <Routes>
-        {/* Reachable without being signed in: that's where Sign-in links land. */}
-        <Route path="anmelden" element={<Frame><SignInScreen /></Frame>} />
-        <Route path="*" element={<SignedInApp />} />
-      </Routes>
-      {measuring && <TapTiming />}
-    </>
+    <Routes>
+      {/* Reachable without being signed in: that's where Sign-in links land. */}
+      <Route path="anmelden" element={<Frame><SignInScreen /></Frame>} />
+      <Route path="*" element={<SignedInApp />} />
+    </Routes>
   );
 }
 
