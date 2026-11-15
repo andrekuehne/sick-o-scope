@@ -164,6 +164,20 @@ export function createHistory(members: Member[], checkIns: CheckIn[]): History {
   return { statusOf, day, memberStreak, shortcut, familyStreaks, gapProposals };
 }
 
+/** A Season: 1 September to 31 August, labelled like "2026/27". */
+export type Season = { label: string; start: string; end: string };
+
+/** The Season `date` belongs to. */
+export function seasonOf(date: string): Season {
+  const year = Number(date.slice(0, 4));
+  const startYear = date.slice(5) >= "09-01" ? year : year - 1;
+  return {
+    label: `${startYear}/${String((startYear + 1) % 100).padStart(2, "0")}`,
+    start: `${startYear}-09-01`,
+    end: `${startYear + 1}-08-31`,
+  };
+}
+
 /** Every missed day of every Member in a proposal, day by day. */
 export function missedDays(proposal: GapProposal): { member: Member; last: CheckInState; date: string }[] {
   return datesBetween(proposal.from, proposal.to).flatMap((date) => proposal.members.map((m) => ({ ...m, date })));

@@ -30,6 +30,11 @@ export function utcToday(now = new Date()): string {
   return now.toISOString().slice(0, 10);
 }
 
+/** True for a Monday. */
+export function isMonday(date: string): boolean {
+  return new Date(`${date}T00:00:00Z`).getUTCDay() === 1;
+}
+
 /** Every date from `from` to `to`, both included. */
 export function datesBetween(from: string, to: string): string[] {
   const dates: string[] = [];

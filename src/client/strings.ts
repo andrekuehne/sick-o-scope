@@ -17,6 +17,8 @@ export const de = {
   loading: "Einen Moment …",
   /** Joins bits of one line, like "🤒 Richtig krank · Tag 3". */
   joined: (parts: string[]) => parts.join(" · "),
+  noMembers: "Noch keine Familienmitglieder. Leg sie in den Einstellungen an:",
+  toSettings: "Zu den Einstellungen",
   offlineOrError: "Das hat nicht geklappt. Bitte prüf die Verbindung und versuch es nochmal.",
   askForNewLink: "Bitte lass dir von jemandem aus deiner Familie einen neuen Anmelde-Link schicken.",
   nav: {
@@ -51,8 +53,6 @@ export const de = {
     checkedIn: (done: number, total: number) => `${done} / ${total} eingetragen`,
     allHealthyToday: "Alle fit heute",
     allHealthyOn: (day: string) => `Alle fit am ${day}`,
-    noMembers: "Noch keine Familienmitglieder. Leg sie in den Einstellungen an:",
-    toSettings: "Zu den Einstellungen",
     gap: "Noch nichts eingetragen",
     healthy: "🙂 Fit",
     sick: (severityLabel: string) => `🤒 ${severityLabel}`,
@@ -109,7 +109,22 @@ export const de = {
   } satisfies Record<Severity, string>,
   timeline: {
     title: "Verlauf",
-    placeholder: "Hier siehst du bald, wer wann krank war.",
+    season: (label: string) => `Saison ${label}`,
+    seasonBar: "Saison",
+    previousSeason: "Vorherige Saison",
+    nextSeason: "Nächste Saison",
+    zoom: "Zoom",
+    zoomSteps: { day: "Tag", week: "Woche", month: "Monat" },
+    legend: "Legende",
+    healthy: "Fit",
+    gap: "Nicht eingetragen",
+    empty: "In dieser Saison gibt es keine Einträge.",
+    /** A day or several in a Member's lane: "Luna, Sa., 14. Nov.: Richtig krank". */
+    days: (name: string, when: string, status: string) => `${name}, ${when}: ${status}`,
+    /** "Richtig krank (Husten, Fieber)" */
+    withSymptoms: (severityLabel: string, symptomNames: string[]) => `${severityLabel} (${symptomNames.join(", ")})`,
+    /** In place of the Badges that don't fit on a day. */
+    moreBadges: (n: number) => `+${n}`,
   },
   settings: {
     title: "Einstellungen",

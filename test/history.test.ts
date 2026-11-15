@@ -1,7 +1,7 @@
 import { expect, it } from "vitest";
 import type { CheckIn } from "../src/shared/check-ins.ts";
 import { addDays } from "../src/shared/dates.ts";
-import { createHistory } from "../src/shared/history.ts";
+import { createHistory, seasonOf } from "../src/shared/history.ts";
 import type { Member } from "../src/shared/members.ts";
 import type { SymptomKey } from "../src/shared/symptoms.ts";
 
@@ -209,4 +209,11 @@ it("prompts only for Gaps that began at most 14 days back, skips Members with no
     },
   ]);
   expect(createHistory([member("luna")], [healthy("luna", "2026-11-14")]).gapProposals("2026-11-15")).toEqual([]);
+});
+
+it("puts 31 Aug and 1 Sep in different Seasons, each running 1 Sep – 31 Aug", () => {
+  expect(seasonOf("2026-08-31")).toEqual({ label: "2025/26", start: "2025-09-01", end: "2026-08-31" });
+  expect(seasonOf("2026-09-01")).toEqual({ label: "2026/27", start: "2026-09-01", end: "2027-08-31" });
+  expect(seasonOf("2027-02-28")).toEqual({ label: "2026/27", start: "2026-09-01", end: "2027-08-31" });
+  expect(seasonOf("2099-12-31").label).toBe("2099/00");
 });

@@ -1,7 +1,7 @@
-import { useEffect, useState } from "react";
-import { Link, useSearchParams } from "react-router";
+import { useState } from "react";
+import { useSearchParams } from "react-router";
 import type { Me } from "../../shared/auth.ts";
-import { addDays, isCalendarDate, localToday } from "../../shared/dates.ts";
+import { addDays, isCalendarDate } from "../../shared/dates.ts";
 import type { CheckIn, CheckInState } from "../../shared/check-ins.ts";
 import { createHistory, type DayStatus, type History, missedDays, type Shortcut } from "../../shared/history.ts";
 import type { Member } from "../../shared/members.ts";
@@ -10,7 +10,8 @@ import { useCheckIns, useCheckInWrites } from "../check-ins.ts";
 import { CheckInSheet } from "../components/CheckInSheet.tsx";
 import { GapFillCard } from "../components/GapFillCard.tsx";
 import { MemberAvatar } from "../components/MemberAvatar.tsx";
-import { shortDate, weekdayDate } from "../dates.ts";
+import { NoMembersNotice } from "../components/NoMembersNotice.tsx";
+import { dayLabel, shortDate, useLocalToday } from "../dates.ts";
 import { useDismissedGapProposals } from "../gap-fill-dismissals.ts";
 import { t } from "../strings.ts";
 
@@ -63,9 +64,7 @@ export function TodayScreen({ me }: { me: Me }) {
       <DateBar date={date} today={today} onChange={setDate} />
 
       {day.total === 0 ? (
-        <p className="notice">
-          {t.today.noMembers} <Link to="/einstellungen">{t.today.toSettings}</Link>
-        </p>
+        <NoMembersNotice />
       ) : (
         <>
           <div className="day-summary">
@@ -337,24 +336,3 @@ function DateBar({ date, today, onChange }: { date: string; today: string; onCha
   );
 }
 
-/** "Heute, 15. Nov.", "Gestern, 14. Nov." or "Fr., 13. Nov." */
-function dayLabel(date: string, today: string): string {
-  if (date === today) return `${t.today.todayPrefix}, ${shortDate(date)}`;
-  if (date === addDays(today, -1)) return `${t.today.yesterdayPrefix}, ${shortDate(date)}`;
-  return weekdayDate(date);
-}
-
-/** Today's local date, kept current across midnight and when the app comes back to the front. */
-function useLocalToday(): string {
-  const [today, setToday] = useState(localToday);
-  useEffect(() => {
-    const update = () => setToday(localToday());
-    const timer = setInterval(update, 60_000);
-    document.addEventListener("visibilitychange", update);
-    return () => {
-      clearInterval(timer);
-      document.removeEventListener("visibilitychange", update);
-    };
-  }, []);
-  return today;
-}

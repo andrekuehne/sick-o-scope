@@ -48,3 +48,26 @@ export async function signedInWithMembers(page: import("@playwright/test").Page,
   }, memberNames);
   await page.reload();
 }
+
+/** Saves a Check-in `daysAgo` days before the phone's today, as another Device would. */
+export async function logDay(page: import("@playwright/test").Page, memberName: string, daysAgo: number, state: object) {
+  await page.evaluate(
+    async ({ memberName, daysAgo, state }) => {
+      const me = (await (await fetch("/api/me")).json()) as {
+        family: { id: string };
+        members: { id: string; name: string }[];
+      };
+      const member = me.members.find((m) => m.name === memberName);
+      const day = new Date();
+      day.setDate(day.getDate() - daysAgo);
+      const date = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
+      const res = await fetch(`/api/families/${me.family.id}/check-ins/${date}/${member?.id}`, {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify(state),
+      });
+      if (!res.ok) throw new Error(`logging ${memberName} failed: ${res.status}`);
+    },
+    { memberName, daysAgo, state },
+  );
+}
