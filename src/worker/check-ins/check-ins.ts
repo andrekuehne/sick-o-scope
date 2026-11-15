@@ -41,6 +41,22 @@ export async function checkInsBetween(db: D1Database, familyId: string, from: st
   return results.map(toCheckIn);
 }
 
+/** A Check-in together with its Member's name, as the CSV export lists it. */
+export type CheckInWithMemberName = CheckIn & { memberName: string };
+
+/** Every Check-in of the Family, by date and then in the Members' order, with the Member's name. */
+export async function allCheckInsWithMemberNames(db: D1Database, familyId: string): Promise<CheckInWithMemberName[]> {
+  const { results } = await db
+    .prepare(
+      `SELECT checked.*, m.name AS member_name FROM (${SELECT_CHECK_INS} WHERE c.family_id = ?) checked
+       JOIN members m ON m.id = checked.member_id
+       ORDER BY checked.date, m.sort_order, m.created_at`,
+    )
+    .bind(familyId)
+    .all<CheckInRow & { member_name: string }>();
+  return results.map((row) => ({ ...toCheckIn(row), memberName: row.member_name }));
+}
+
 async function checkInOn(db: D1Database, familyId: string, memberId: string, date: string): Promise<CheckIn | null> {
   const row = await db
     .prepare(`${SELECT_CHECK_INS} WHERE c.family_id = ? AND c.member_id = ? AND c.date = ?`)

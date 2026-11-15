@@ -1,6 +1,6 @@
 // Every UI string lives here, in German. Components never hard-code text.
-// The one exception is the Symptom catalog (src/shared/symptoms.ts): its names are shared
-// with the Worker, which needs them too (for example for the CSV export).
+// Two exceptions, both because the Worker needs the words too: the Symptom catalog
+// (src/shared/symptoms.ts), and the CSV export's headings and statuses (src/worker/export/csv.ts).
 // Kept as one plain object so a second language can be added later
 // by giving it the same shape (see `Strings`).
 
@@ -130,6 +130,9 @@ export const de = {
     title: "Einstellungen",
     signedInAs: (user: string, family: string) => `Angemeldet als ${user} · ${family}`,
     signOut: "Dieses Gerät abmelden",
+    exportTitle: "Daten",
+    exportIntro: "Alle Einträge als Tabelle, zum Beispiel für Excel oder Google Tabellen. Eure Daten gehören euch.",
+    exportCsv: "CSV exportieren",
   },
   members: {
     title: "Familienmitglieder",

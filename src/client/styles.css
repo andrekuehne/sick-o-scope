@@ -897,3 +897,11 @@ h3 {
   font: inherit;
   font-size: 0.85rem;
 }
+
+/* A link that looks like a button, such as the CSV download. */
+.link-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+}

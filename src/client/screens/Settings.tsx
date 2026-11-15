@@ -4,7 +4,7 @@ import type { Me } from "../../shared/auth.ts";
 import type { Member, MemberInput } from "../../shared/members.ts";
 import { MemberAvatar } from "../components/MemberAvatar.tsx";
 import { UsersSettings } from "../components/UsersSettings.tsx";
-import { addMember, reorderMembers, setMemberArchived, signOut, updateMember } from "../api.ts";
+import { addMember, exportCsvUrl, reorderMembers, setMemberArchived, signOut, updateMember } from "../api.ts";
 import { MEMBER_COLOURS, MEMBER_EMOJIS, firstUnused } from "../member-options.ts";
 import { ME_KEY, useSetMe } from "../me.ts";
 import { t } from "../strings.ts";
@@ -16,6 +16,12 @@ export function SettingsScreen({ me }: { me: Me }) {
       <p className="muted">{t.settings.signedInAs(me.user.name, me.family.name)}</p>
       <MembersSettings me={me} />
       <UsersSettings me={me} />
+      <h2>{t.settings.exportTitle}</h2>
+      <p className="muted">{t.settings.exportIntro}</p>
+      {/* A plain download: the browser sends the session cookie, the Worker sends the file. */}
+      <a className="button link-button" href={exportCsvUrl(me.family.id)} download>
+        📄 {t.settings.exportCsv}
+      </a>
       <SignOutButton />
     </section>
   );

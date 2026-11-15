@@ -126,3 +126,8 @@ export async function removeUser(familyId: string, userId: string): Promise<void
   const res = await fetch(`${familyPath(familyId)}/users/${encodeURIComponent(userId)}`, { method: "DELETE" });
   if (!res.ok) throw new Error(`DELETE user failed: ${res.status}`);
 }
+
+/** Where the Family's Check-ins download as a CSV file. */
+export function exportCsvUrl(familyId: string): string {
+  return `${familyPath(familyId)}/export.csv`;
+}
