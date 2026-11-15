@@ -57,14 +57,14 @@ export const de = {
     allHealthyOn: (day: string) => `Alle fit am ${day}`,
     gap: "Noch nichts eingetragen",
     healthy: "🙂 Fit",
-    sick: (severityLabel: string) => `🤒 ${severityLabel}`,
+    sick: (severityIcon: string, severityLabel: string) => `${severityIcon} ${severityLabel}`,
     markHealthy: "Fit",
     markHealthyLabel: (name: string) => `${name} ist fit`,
     markSick: "Krank…",
     markSickLabel: (name: string) => `${name} ist krank`,
     /** The Sick day before the selected date: "Gestern" when that's today, else "Am Vortag". */
-    previousDaySick: (isToday: boolean, severityLabel: string) =>
-      `${isToday ? "Gestern" : "Am Vortag"}: 🤒 ${severityLabel}`,
+    previousDaySick: (isToday: boolean, severityIcon: string, severityLabel: string) =>
+      `${isToday ? "Gestern" : "Am Vortag"}: ${severityIcon} ${severityLabel}`,
     sickDay: (n: number) => `Tag ${n}`,
     shortcut: { better: "Besser", same: "Gleich", worse: "Schlechter" },
     shortcutLabel: (name: string, shortcut: string) => `${name}: ${shortcut}`,
@@ -103,11 +103,21 @@ export const de = {
     step: (n: number, of: number) => `${n} von ${of}`,
   },
   severity: {
+    0: "Fast gesund",
     1: "Naja",
     2: "Angeschlagen",
     3: "Richtig krank",
     4: "Sofa-Kobold",
     5: "Totalausfall",
+  } satisfies Record<Severity, string>,
+  /** Placeholder pictures for the Severity steps, next to their labels. */
+  severityIcon: {
+    0: "🌤️",
+    1: "🙁",
+    2: "😷",
+    3: "🤒",
+    4: "🛋️",
+    5: "😵",
   } satisfies Record<Severity, string>,
   timeline: {
     title: "Verlauf",

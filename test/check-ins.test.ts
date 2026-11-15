@@ -69,7 +69,7 @@ it("rejects inconsistent days and impossible dates", async () => {
     { status: "healthy", severity: 2 }, // Healthy has no Severity
     { status: "sick" }, // Sick needs one
     { status: "sick", severity: 6 },
-    { status: "sick", severity: 0 },
+    { status: "sick", severity: -1 },
     { status: "maybe" },
   ]) {
     expect((await save(today, state)).status).toBe(400);
@@ -78,6 +78,15 @@ it("rejects inconsistent days and impossible dates", async () => {
   expect((await save(addDays(today, 2), { status: "healthy" })).status).toBe(400);
   // One day ahead of the server's UTC date is still someone's today.
   expect((await save(addDays(today, 1), { status: "healthy" })).status).toBe(200);
+});
+
+it("saves a Sick day at Severity 0, Fast gesund", async () => {
+  const { cookie, familyId, members } = await familyWith("Luna");
+  const luna = members[0]!.id;
+  expect((await saveCheckIn(cookie, familyId, today, luna, { status: "sick", severity: 0, symptoms: ["runny-nose"] })).status).toBe(200);
+  expect(await checkInsBetween(cookie, familyId, today, today)).toMatchObject([
+    { status: "sick", severity: 0, symptoms: ["runny-nose"] },
+  ]);
 });
 
 it("fills only Gaps: an existing Check-in is never overwritten", async () => {

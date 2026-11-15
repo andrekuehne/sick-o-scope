@@ -106,7 +106,8 @@ export function createHistory(members: Member[], checkIns: CheckIn[]): History {
 
     const change = { "like-yesterday": 0, same: 0, better: -1, worse: 1 }[shortcut];
     const severity = Math.min(5, previous.severity + change);
-    if (severity < 1) return { status: "healthy", note: null };
+    // Besser from Fast gesund (0) is a Healthy day.
+    if (severity < 0) return { status: "healthy", note: null };
     return { status: "sick", severity: severity as Severity, symptoms: [...previous.symptoms], note: null };
   }
 

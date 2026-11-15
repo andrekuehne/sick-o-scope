@@ -4,7 +4,8 @@ import { SYMPTOM_GROUPS, type SymptomKey } from "../../shared/symptoms.ts";
 import type { WriteCallbacks } from "../check-ins.ts";
 import { t } from "../strings.ts";
 
-const SEVERITIES = [1, 2, 3, 4, 5] as const satisfies readonly Severity[];
+/** In a 3 × 2 grid, row by row: 0 1 2 / 3 4 5. */
+const SEVERITIES = [0, 1, 2, 3, 4, 5] as const satisfies readonly Severity[];
 const STATUSES = [
   { status: "healthy", emoji: "🙂", label: t.sheet.healthy },
   { status: "sick", emoji: "🤒", label: t.sheet.sick },
@@ -109,7 +110,12 @@ export function CheckInSheet({
                     aria-pressed={severity === level}
                     onClick={() => setSeverity(level)}
                   >
-                    <span className="severity-level">{level}</span> {t.severity[level]}
+                    <span className="severity-icon" aria-hidden="true">
+                      {t.severityIcon[level]}
+                    </span>
+                    <span className="severity-label">
+                      <span className="severity-level">{level}</span> {t.severity[level]}
+                    </span>
                   </button>
                 ))}
               </div>

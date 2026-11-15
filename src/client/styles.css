@@ -10,8 +10,9 @@
   --border: #f0e2d6;
   --radius: 16px;
   --nav-height: 64px;
-  /* Timeline days: Healthy calm on its own, Severity from pale yellow to deep plum. */
+  /* Timeline days: Healthy calm on its own, Severity from pale lime (Fast gesund) to deep plum. */
   --day-healthy: #9fdcb8;
+  --sev-0: #e2efa4;
   --sev-1: #ffe08a;
   --sev-2: #ffbe6b;
   --sev-3: #ff8f5c;
@@ -32,6 +33,7 @@
     --accent-soft: #46303a;
     --border: #3a2f45;
     --day-healthy: #2e7550;
+    --sev-0: #6b7f2e;
     --sev-1: #9c8432;
     --sev-2: #a8672a;
     --sev-3: #b44c2c;
@@ -43,6 +45,15 @@
 
 * {
   box-sizing: border-box;
+}
+
+/* No waiting to tell a tap from a double-tap zoom on anything tappable. */
+a,
+button,
+input,
+label,
+textarea {
+  touch-action: manipulation;
 }
 
 body {
@@ -109,6 +120,11 @@ a {
   font-size: 0.8rem;
   color: var(--muted);
   text-decoration: none;
+}
+
+/* Answers the touch at once, before the next screen is drawn. */
+.app-nav-item:active {
+  background: var(--accent-soft);
 }
 
 .app-nav-item.active {
@@ -246,6 +262,10 @@ h3 {
 
 .member-form {
   margin: 12px 0;
+}
+
+.member-form .form-actions {
+  margin-bottom: 16px;
 }
 
 .member-form h3 {
@@ -452,16 +472,60 @@ h3 {
   font-weight: 700;
 }
 
+/* Six steps in a 3 × 2 grid, each with its picture and its colour from the timeline. */
 .severity-choices {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
   gap: 6px;
 }
 
 .sheet .severity-choice {
-  flex: 1 1 auto;
-  padding: 0 12px;
+  min-height: 76px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 6px 4px 10px;
   font-weight: 600;
+  box-shadow: inset 0 -6px 0 var(--swatch);
+}
+
+.severity-choice[data-severity="0"] {
+  --swatch: var(--sev-0);
+}
+
+.severity-choice[data-severity="1"] {
+  --swatch: var(--sev-1);
+}
+
+.severity-choice[data-severity="2"] {
+  --swatch: var(--sev-2);
+}
+
+.severity-choice[data-severity="3"] {
+  --swatch: var(--sev-3);
+}
+
+.severity-choice[data-severity="4"] {
+  --swatch: var(--sev-4);
+}
+
+.severity-choice[data-severity="5"] {
+  --swatch: var(--sev-5);
+}
+
+.severity-icon {
+  font-size: 1.5rem;
+  line-height: 1.2;
+}
+
+.severity-label {
+  font-size: 0.85rem;
+  line-height: 1.15;
+  text-align: center;
+  hyphens: auto;
+  overflow-wrap: anywhere;
 }
 
 .severity-level {
@@ -732,6 +796,10 @@ h3 {
 
 [data-colour="healthy"] {
   background: var(--day-healthy);
+}
+
+[data-colour="sick-0"] {
+  background: var(--sev-0);
 }
 
 [data-colour="sick-1"] {

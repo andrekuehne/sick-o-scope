@@ -220,7 +220,7 @@ function MemberDayCard({
           {status ? t.joined([statusText(status), ...(sickDay !== null ? [t.today.sickDay(sickDay)] : [])]) : t.loading}
         </span>
         {shortcuts.length > 0 && yesterday.kind === "sick" && (
-          <span className="day-card-status">{t.today.previousDaySick(isToday, t.severity[yesterday.severity])}</span>
+          <span className="day-card-status">{t.today.previousDaySick(isToday, t.severityIcon[yesterday.severity], t.severity[yesterday.severity])}</span>
         )}
         {status?.kind === "sick" && status.symptoms.length > 0 && (
           <span className="day-card-badges">
@@ -295,7 +295,7 @@ function MemberDayCard({
 function statusText(status: DayStatus): string {
   if (status.kind === "gap") return t.today.gap;
   if (status.kind === "healthy") return t.today.healthy;
-  return t.today.sick(t.severity[status.severity]);
+  return t.today.sick(t.severityIcon[status.severity], t.severity[status.severity]);
 }
 
 function DateBar({ date, today, onChange }: { date: string; today: string; onChange: (date: string) => void }) {

@@ -5,12 +5,16 @@
 /** In display order: the groups, and the Symptoms within each. */
 export const SYMPTOM_GROUPS = [
   {
-    name: "Nase & Hals",
+    name: "Hals, Nase & Ohren",
     symptoms: [
       { key: "runny-nose", name: "Schnupfen", badge: "🤧" },
       { key: "stuffy-nose", name: "Verstopfte Nase", badge: "👃" },
+      { key: "sinuses", name: "Nebenhöhlen", badge: "😖" },
+      { key: "phlegm", name: "Schleimbrocken", badge: "🟢" },
       { key: "cough", name: "Husten", badge: "😮‍💨" },
       { key: "sore-throat", name: "Halsweh", badge: "🗣️" },
+      { key: "earache", name: "Ohrenweh", badge: "👂" },
+      { key: "itchy-ears", name: "Ohrenjucken", badge: "🪶" },
     ],
   },
   {
@@ -34,9 +38,8 @@ export const SYMPTOM_GROUPS = [
   {
     name: "Sonstiges",
     symptoms: [
-      { key: "earache", name: "Ohrenweh", badge: "👂" },
       { key: "allergy", name: "Allergie", badge: "🌼" },
-      { key: "mystery-bug", name: "Mysteriöser Käfer", badge: "👾" },
+      { key: "mystery-bug", name: "Mystery-Bug", badge: "👾" },
     ],
   },
 ] as const;

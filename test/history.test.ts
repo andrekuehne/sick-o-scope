@@ -14,7 +14,7 @@ const healthy = (memberId: string, date: string): CheckIn => ({
   updatedBy: "André",
   updatedAt: "2026-11-15T08:00:00.000Z",
 });
-const sick = (memberId: string, date: string, severity: 1 | 2 | 3 | 4 | 5, symptoms: SymptomKey[] = []): CheckIn => ({
+const sick = (memberId: string, date: string, severity: 0 | 1 | 2 | 3 | 4 | 5, symptoms: SymptomKey[] = []): CheckIn => ({
   ...healthy(memberId, date),
   status: "sick",
   severity,
@@ -76,14 +76,20 @@ it("counts a Member's current Streak across a month boundary, and a Gap ends it"
   expect(history.memberStreak("luna", "2026-11-06")).toBeNull();
 });
 
-it("turns Besser at Severity 1 into a Healthy day and caps Schlechter at 5, keeping the Symptoms", () => {
+it("lowers Besser from Naja to Fast gesund and from Fast gesund to Healthy, and caps Schlechter at 5, keeping the Symptoms", () => {
   const history = createHistory(
-    [member("luna"), member("max"), member("oma")],
-    [sick("luna", "2026-11-14", 1, ["cough"]), sick("max", "2026-11-14", 5, ["fever", "cough"]), sick("oma", "2026-11-14", 3, ["fever"])],
+    [member("luna"), member("ben"), member("max"), member("oma")],
+    [
+      sick("luna", "2026-11-14", 0, ["runny-nose"]),
+      sick("ben", "2026-11-14", 1, ["cough"]),
+      sick("max", "2026-11-14", 5, ["fever", "cough"]),
+      sick("oma", "2026-11-14", 3, ["fever"]),
+    ],
   );
   const shortcut = history.shortcut;
 
   expect(shortcut("better", "luna", "2026-11-15")).toEqual({ status: "healthy", note: null });
+  expect(shortcut("better", "ben", "2026-11-15")).toEqual({ status: "sick", severity: 0, symptoms: ["cough"], note: null });
   expect(shortcut("worse", "max", "2026-11-15")).toEqual({ status: "sick", severity: 5, symptoms: ["fever", "cough"], note: null });
   expect(shortcut("better", "oma", "2026-11-15")).toEqual({ status: "sick", severity: 2, symptoms: ["fever"], note: null });
   expect(shortcut("worse", "oma", "2026-11-15")).toEqual({ status: "sick", severity: 4, symptoms: ["fever"], note: null });

@@ -31,15 +31,15 @@ One Member's record for one calendar date, either Healthy or Sick.
 _Avoid_: Daily entry, entry, log, record
 
 **Healthy**:
-A Check-in stating the Member felt fine that day. It is an explicit statement, never assumed.
-_Avoid_: Severity 0
+A Check-in stating the Member felt fine that day. It is an explicit statement, never assumed. Healthy has no Severity; "almost well" (Severity 0) is still Sick.
+_Avoid_: Severity 0 (as a word for Healthy)
 
 **Sick**:
-A Check-in with a Severity and zero or more Symptoms. Any Check-in that isn't Healthy is Sick, including "Meh" days.
+A Check-in with a Severity and zero or more Symptoms. Any Check-in that isn't Healthy is Sick, including "Meh" and "almost well" days.
 _Avoid_: Ill, unwell
 
 **Severity**:
-How bad a Sick day was overall, on a rough scale from 1 (Meh) to 5 (Total disaster). It applies to the whole day, never to a single Symptom.
+How bad a Sick day was overall, on a rough scale from 0 (Almost well, such as a leftover runny nose) to 5 (Total disaster). It applies to the whole day, never to a single Symptom.
 _Avoid_: Intensity, score
 
 **Symptom**:

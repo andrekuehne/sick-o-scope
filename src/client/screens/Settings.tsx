@@ -194,8 +194,25 @@ function MemberForm({
       <h3>{title}</h3>
       <label className="field">
         <span>{t.members.form.name}</span>
-        <input value={name} onChange={(e) => setName(e.target.value)} maxLength={40} required autoFocus />
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          maxLength={40}
+          required
+          autoFocus
+          enterKeyHint="done"
+        />
       </label>
+      {/* Right under the name, so it's in view while the keyboard is open; it saves the
+          picture and colour chosen below too (both start with a fresh suggestion). */}
+      <div className="form-actions">
+        <button type="submit" className="button primary" disabled={busy || !name.trim()}>
+          {t.members.form.save}
+        </button>
+        <button type="button" className="button" onClick={onCancel}>
+          {t.members.form.cancel}
+        </button>
+      </div>
 
       <fieldset className="field">
         <legend>{t.members.form.emoji}</legend>
@@ -232,14 +249,6 @@ function MemberForm({
         </div>
       </fieldset>
 
-      <div className="form-actions">
-        <button type="submit" className="button primary" disabled={busy || !name.trim()}>
-          {t.members.form.save}
-        </button>
-        <button type="button" className="button" onClick={onCancel}>
-          {t.members.form.cancel}
-        </button>
-      </div>
     </form>
   );
 }

@@ -31,6 +31,7 @@ type DrawnDays = { first: number; last: number };
 /** A day's colour in a lane, and what it means. An archived Member's days without a Check-in stay blank. */
 const DAY_COLOURS = {
   healthy: t.timeline.healthy,
+  "sick-0": t.severity[0],
   "sick-1": t.severity[1],
   "sick-2": t.severity[2],
   "sick-3": t.severity[3],

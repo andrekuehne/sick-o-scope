@@ -5,8 +5,8 @@ import { z } from "zod";
 import { CalendarDate } from "./dates.ts";
 import { SYMPTOM_KEYS } from "./symptoms.ts";
 
-/** How bad a Sick day was overall, from 1 (Naja) to 5 (Totalausfall). */
-export const Severity = z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]);
+/** How bad a Sick day was overall, from 0 (Fast gesund) to 5 (Totalausfall). */
+export const Severity = z.union([z.literal(0), z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]);
 export type Severity = z.infer<typeof Severity>;
 
 /** A Symptom's stable key from the fixed catalog, e.g. "runny-nose"; anything else is rejected. */
