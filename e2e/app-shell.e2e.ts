@@ -15,6 +15,23 @@ test("navigates between the main screens, also by deep link", async ({ page }) =
   await expect(page.getByRole("heading", { name: "Einstellungen" })).toBeVisible();
 });
 
+// Regression: on the phone, switching screens waited for the finger to lift (plus Chrome's
+// delayed pressed state), which felt sluggish. Like a native tab bar, it now switches on touch.
+test("switches screens as soon as the bottom bar is touched, before the finger lifts", async ({ page }) => {
+  await page.goto(await newFamilySignInLink("Familie Kühne", "André"));
+  await page.getByRole("button", { name: "Anmelden" }).click();
+  await expect(page.getByRole("heading", { name: "Hallo André 👋" })).toBeVisible();
+
+  await page.getByRole("navigation", { name: "Hauptnavigation" }).getByRole("link", { name: "Verlauf" }).hover();
+  await page.mouse.down();
+  await expect(page.getByRole("heading", { name: "Verlauf" })).toBeVisible();
+  await page.mouse.up();
+  await expect(page).toHaveURL(/\/verlauf$/);
+  // Lifting the finger on the same tab doesn't add a second history entry: Back leaves Verlauf.
+  await page.goBack();
+  await expect(page.getByRole("heading", { name: "Hallo André 👋" })).toBeVisible();
+});
+
 test("without signing in, the app asks for a Sign-in link", async ({ page }) => {
   await page.goto("/verlauf");
   await expect(page.getByRole("heading", { name: "Du bist nicht angemeldet" })).toBeVisible();

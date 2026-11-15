@@ -1,6 +1,6 @@
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
-import { Link, NavLink, Route, Routes } from "react-router";
+import { Link, NavLink, Route, Routes, useNavigate } from "react-router";
 import { useMe } from "./me.ts";
 import { forgetOfflineData } from "./offline-data.ts";
 import { useOnline } from "./online.ts";
@@ -112,9 +112,23 @@ function Frame({ nav = false, children }: { nav?: boolean; children: React.React
   );
 }
 
+/**
+ * A tab in the bottom bar. Like a native tab bar, it switches as soon as it's touched rather
+ * than when the finger lifts (and before Chrome shows its delayed pressed state): the bar
+ * never scrolls, so a touch there is always a tap. The click that follows lands on the same
+ * screen and replaces it, so it adds no history entry; keyboard and mouse use it as before.
+ */
 function NavItem({ to, icon, label }: { to: string; icon: string; label: string }) {
+  const navigate = useNavigate();
   return (
-    <NavLink to={to} end className="app-nav-item">
+    <NavLink
+      to={to}
+      end
+      className="app-nav-item"
+      onPointerDown={(event) => {
+        if (event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey) navigate(to);
+      }}
+    >
       <span className="app-nav-icon" aria-hidden="true">
         {icon}
       </span>
