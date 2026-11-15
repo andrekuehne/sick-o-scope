@@ -39,6 +39,12 @@ export default defineConfig({
         navigateFallback: "/index.html",
         // API responses must never be answered with the cached app page.
         navigateFallbackDenylist: [/^\/api\//],
+        // A new version takes over on its own, right after it is downloaded: it doesn't
+        // wait for every tab to close, nor for the old page to ask it to. Without this,
+        // an installed app kept showing the old version even after reloading.
+        skipWaiting: true,
+        clientsClaim: true,
+        cleanupOutdatedCaches: true,
       },
     }),
   ],

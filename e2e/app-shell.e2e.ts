@@ -27,6 +27,25 @@ test("API paths never return the app", async ({ request }) => {
   expect(api.headers()["content-type"]).toContain("application/json");
 });
 
+// Regression: after a deploy, an installed app kept showing the old version, even after
+// reloading, because the new service worker waited for every tab to close.
+test("a new version takes over on its own, without waiting for the app to be closed", async ({ page }) => {
+  await page.goto("/");
+  await page.evaluate(() => navigator.serviceWorker.ready);
+
+  const tookOver = await page.evaluate(async () => {
+    const controllerChanged = new Promise<boolean>((resolve) => {
+      navigator.serviceWorker.addEventListener("controllerchange", () => resolve(true), { once: true });
+      setTimeout(() => resolve(false), 5000);
+    });
+    // A deploy, as the browser sees it: a changed service worker script. (A new script URL
+    // counts as a change; Playwright can't intercept the browser's own sw.js fetch.)
+    await navigator.serviceWorker.register("/sw.js?next-version");
+    return controllerChanged;
+  });
+  expect(tookOver).toBe(true);
+});
+
 test("is installable: manifest with icons, and an active service worker", async ({ page, request }) => {
   const manifest = await (await request.get("/manifest.webmanifest")).json();
   expect(manifest).toMatchObject({ name: "Sick-o-Scope", display: "standalone", start_url: "/" });
