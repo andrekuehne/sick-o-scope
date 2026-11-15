@@ -65,7 +65,13 @@ npm run setup -- family --family "Familie Kühne" --user "André"
 npm run setup -- link --user "André"
 ```
 
-Both work on the local database by default. For production, add `--remote --base-url https://sick-o-scope.mail-4a4.workers.dev` (needs `npx wrangler login`). The command runs the Worker's own code through `wrangler d1 execute` (`scripts/wrangler-d1.ts` explains why not Wrangler's remote bindings).
+Both work on the local database by default. For production, add `--remote --base-url https://sick-o-scope.mail-4a4.workers.dev` (needs `npx wrangler login`), for example a fresh Sign-in link for a signed-out User:
+
+```sh
+npm run setup -- link --user "André" --remote --base-url https://sick-o-scope.mail-4a4.workers.dev
+```
+
+The command runs the Worker's own code through `wrangler d1 execute` (`scripts/wrangler-d1.ts` explains why not Wrangler's remote bindings).
 
 ## Database migrations
 
