@@ -11,6 +11,11 @@
     "noUncheckedIndexedAccess": true,
     "noFallthroughCasesInSwitch": true,
     "isolatedModules": true,
+    // Node runs scripts/*.ts by stripping types, importing Worker code directly:
+    // relative imports carry their .ts extension, and only erasable syntax is allowed.
+    "allowImportingTsExtensions": true,
+    "verbatimModuleSyntax": true,
+    "erasableSyntaxOnly": true,
     "skipLibCheck": true,
     "noEmit": true
   },

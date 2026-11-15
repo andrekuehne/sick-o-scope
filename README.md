@@ -26,6 +26,12 @@ npm run db:migrate:local   # create the local D1 database and apply migrations
 npm run dev                # http://localhost:5173, app and API together
 ```
 
+To sign in locally, create a Family and open the printed link (see "Signing in" below):
+
+```sh
+npm run setup -- family --family "Familie Test" --user "André"
+```
+
 For deploying by hand, sign in to Cloudflare once: `npx wrangler login`.
 
 ### Daily commands
@@ -44,6 +50,22 @@ For deploying by hand, sign in to Cloudflare once: `npx wrangler login`.
 | `npm run deploy` | Builds and deploys by hand. Apply remote migrations first. Normally CI does both. |
 | `npm run cf-typegen` | Regenerates `worker-configuration.d.ts` after changing `wrangler.jsonc`. |
 | `npm run icons` | Re-renders the placeholder app icons. |
+| `npm run setup -- …` | Creates a Family or a fresh Sign-in link (see "Signing in"). |
+
+## Signing in
+
+There are no passwords or emails: a Device signs in by opening a one-time Sign-in link (ADR 0002). Links are valid for 24 hours. A signed-in Device stays signed in as long as it is used at least once a year.
+
+The setup command creates the first Family and its first User, and is also the way back in when nobody in a Family can sign in any more:
+
+```sh
+# A new Family with its first User, plus a Sign-in link for them:
+npm run setup -- family --family "Familie Kühne" --user "André"
+# A fresh Sign-in link for an existing User:
+npm run setup -- link --user "André"
+```
+
+Both work on the local database by default. For production, add `--remote --base-url https://sick-o-scope.mail-4a4.workers.dev` (needs `npx wrangler login`). The command runs the Worker's own code through `wrangler d1 execute` (`scripts/wrangler-d1.ts` explains why not Wrangler's remote bindings).
 
 ## Database migrations
 

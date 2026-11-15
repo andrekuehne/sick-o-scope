@@ -1,20 +1,27 @@
 import { expect, test } from "@playwright/test";
+import { newFamilySignInLink } from "./helpers.ts";
 
-test("opens on Heute and navigates between the main screens", async ({ page }) => {
-  await page.goto("/");
-  await expect(page.getByText("Sick-o-Scope").first()).toBeVisible();
-  await expect(page.getByRole("heading", { name: "Heute" })).toBeVisible();
+test("navigates between the main screens, also by deep link", async ({ page }) => {
+  await page.goto(await newFamilySignInLink("Familie Kühne", "André"));
+  await page.getByRole("button", { name: "Anmelden" }).click();
+  await expect(page.getByRole("heading", { name: "Hallo André 👋" })).toBeVisible();
 
   const nav = page.getByRole("navigation", { name: "Hauptnavigation" });
   await nav.getByRole("link", { name: "Verlauf" }).click();
   await expect(page).toHaveURL(/\/verlauf$/);
   await expect(page.getByRole("heading", { name: "Verlauf" })).toBeVisible();
-});
 
-test("deep links load the app, and API paths never return it", async ({ page, request }) => {
   await page.goto("/einstellungen");
   await expect(page.getByRole("heading", { name: "Einstellungen" })).toBeVisible();
+});
 
+test("without signing in, the app asks for a Sign-in link", async ({ page }) => {
+  await page.goto("/verlauf");
+  await expect(page.getByRole("heading", { name: "Du bist nicht angemeldet" })).toBeVisible();
+  await expect(page.getByRole("navigation", { name: "Hauptnavigation" })).toHaveCount(0);
+});
+
+test("API paths never return the app", async ({ request }) => {
   const api = await request.get("/api/does-not-exist");
   expect(api.status()).toBe(404);
   expect(api.headers()["content-type"]).toContain("application/json");

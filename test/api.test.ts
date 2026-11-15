@@ -1,6 +1,6 @@
 import { exports } from "cloudflare:workers";
 import { expect, it } from "vitest";
-import { ServiceStatus } from "../src/shared/service-status";
+import { ServiceStatus } from "../src/shared/service-status.ts";
 
 it("reports the service status as JSON, including the database", async () => {
   const res = await exports.default.fetch("http://example.com/api/status");

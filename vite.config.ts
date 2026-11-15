@@ -2,14 +2,15 @@ import { cloudflare } from "@cloudflare/vite-plugin";
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 import { VitePWA } from "vite-plugin-pwa";
-import { t } from "./src/client/strings";
+import { t } from "./src/client/strings.ts";
 
 export default defineConfig({
   plugins: [
     react(),
     // Runs the Worker (src/worker) in the real Workers runtime during dev and preview,
     // and builds it next to the client bundle (ADR 0001).
-    cloudflare(),
+    // SOS_STATE_DIR moves the local database elsewhere (the end-to-end tests use their own).
+    cloudflare({ persistState: process.env.SOS_STATE_DIR ? { path: process.env.SOS_STATE_DIR } : true }),
     VitePWA({
       // A new version takes over as soon as it is installed, and open pages reload, without asking.
       registerType: "autoUpdate",

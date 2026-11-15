@@ -5,14 +5,32 @@
 export const de = {
   appName: "Sick-o-Scope",
   appDescription: "Wer war wann krank? Das Familien-Krankheitstagebuch.",
+  loading: "Einen Moment …",
+  offlineOrError: "Das hat nicht geklappt. Bitte prüf die Verbindung und versuch es nochmal.",
+  askForNewLink: "Bitte lass dir von jemandem aus deiner Familie einen neuen Anmelde-Link schicken.",
   nav: {
     label: "Hauptnavigation",
     today: "Heute",
     timeline: "Verlauf",
     settings: "Einstellungen",
   },
+  signIn: {
+    title: "Willkommen bei Sick-o-Scope 👋",
+    text: "Tippe auf „Anmelden“, um dieses Gerät für deine Familie anzumelden.",
+    button: "Anmelden",
+    busy: "Wird angemeldet …",
+    failed: {
+      unknown: "Dieser Link ist ungültig.",
+      used: "Dieser Link wurde schon benutzt.",
+      expired: "Dieser Link ist abgelaufen.",
+    },
+  },
+  signedOut: {
+    title: "Du bist nicht angemeldet",
+  },
   today: {
     title: "Heute",
+    greeting: (name: string) => `Hallo ${name} 👋`,
     placeholder: "Hier trägst du bald ein, wem es wie geht.",
   },
   timeline: {
@@ -21,6 +39,8 @@ export const de = {
   },
   settings: {
     title: "Einstellungen",
+    signedInAs: (user: string, family: string) => `Angemeldet als ${user} · ${family}`,
+    signOut: "Abmelden",
     placeholder: "Hier verwaltest du bald Familie und Geräte.",
   },
   notFound: {
