@@ -9,7 +9,7 @@ import { SignInScreen } from "./screens/SignIn.tsx";
 import { TimelineScreen } from "./screens/Timeline.tsx";
 import { TodayScreen } from "./screens/Today.tsx";
 import { t } from "./strings.ts";
-import { TapTiming, tapTimingEnabled } from "./tap-timing.tsx";
+import { replaceTabHistory, TapTiming, tapTimingEnabled } from "./tap-timing.tsx";
 
 // TEMPORARY [DEBUG-messen]: see tap-timing.tsx.
 const measuring = tapTimingEnabled();
@@ -126,8 +126,11 @@ function NavItem({ to, icon, label }: { to: string; icon: string; label: string 
       end
       className="app-nav-item"
       onPointerDown={(event) => {
-        if (event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey) navigate(to);
+        if (event.button === 0 && !event.ctrlKey && !event.metaKey && !event.shiftKey) {
+          navigate(to, { replace: replaceTabHistory });
+        }
       }}
+      replace={replaceTabHistory || undefined}
     >
       <span className="app-nav-icon" aria-hidden="true">
         {icon}
