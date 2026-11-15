@@ -1,0 +1,17 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "sick-o-scope",
+  "main": "src/index.tsx",
+  "compatibility_date": "2026-11-01",
+  "observability": { "enabled": true },
+  // No per-version preview links: every version would otherwise stay reachable at its own URL.
+  "preview_urls": false,
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "sick-o-scope",
+      "database_id": "a871ea3d-ab6a-4cca-978f-b967716b978a",
+      "migrations_dir": "migrations"
+    }
+  ]
+}
