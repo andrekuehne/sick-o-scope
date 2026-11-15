@@ -54,9 +54,10 @@ test("opens offline from the cache, with the last loaded data", async ({ page, c
   await expect(page.getByText("Luna")).toHaveCount(0);
 });
 
-test("a save that fails on the way shows an error, and nothing looks saved", async ({ page }) => {
+test("a save that fails on the way shows an error, and nothing looks saved", async ({ page, context }) => {
   await signedInWithMembers(page, ["Luna"]);
-  await page.route("**/api/families/*/check-ins/*/*", (route) => route.abort("internetdisconnected"));
+  // On the context, not the page: once the service worker controls the page, page routes can miss its requests.
+  await context.route("**/api/families/*/check-ins/*/*", (route) => route.abort("internetdisconnected"));
 
   await page.getByRole("button", { name: "Luna ist fit" }).click();
   await expect(page.getByText("Das hat nicht geklappt")).toBeVisible();
