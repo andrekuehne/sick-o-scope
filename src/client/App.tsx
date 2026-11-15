@@ -1,8 +1,8 @@
 import { Link, NavLink, Route, Routes } from "react-router";
-import type { Me } from "../shared/auth.ts";
 import { useMe } from "./me.ts";
 import { SettingsScreen } from "./screens/Settings.tsx";
 import { SignInScreen } from "./screens/SignIn.tsx";
+import { TodayScreen } from "./screens/Today.tsx";
 import { t } from "./strings.ts";
 
 export function App() {
@@ -45,7 +45,7 @@ function SignedInApp() {
   return (
     <Frame nav>
       <Routes>
-        <Route index element={<Today me={me.data} />} />
+        <Route index element={<TodayScreen me={me.data} />} />
         <Route path="verlauf" element={<Placeholder title={t.timeline.title} text={t.timeline.placeholder} />} />
         <Route path="einstellungen" element={<SettingsScreen me={me.data} />} />
         <Route path="*" element={<NotFound />} />
@@ -83,16 +83,6 @@ function NavItem({ to, icon, label }: { to: string; icon: string; label: string 
       </span>
       {label}
     </NavLink>
-  );
-}
-
-function Today({ me }: { me: Me }) {
-  return (
-    <section className="screen">
-      <h1>{t.today.greeting(me.user.name)}</h1>
-      <p className="muted">{me.family.name}</p>
-      <p className="muted">{t.today.placeholder}</p>
-    </section>
   );
 }
 

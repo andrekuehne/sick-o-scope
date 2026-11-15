@@ -290,3 +290,95 @@ h3 {
 .sign-out {
   margin-top: 32px;
 }
+
+.date-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 16px 0 12px;
+  padding: 4px;
+  border-radius: var(--radius);
+  background: var(--surface);
+  border: 1px solid var(--border);
+}
+
+.date-bar-label {
+  flex: 1;
+  text-align: center;
+  font-weight: 700;
+}
+
+/* The native date input sits invisibly over the 📅 button, so tapping opens the picker. */
+.date-picker {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  overflow: hidden;
+}
+
+.date-picker input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.day-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.day-cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.day-card {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 10px 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.day-card[data-status="healthy"] {
+  border-color: #2bb67366;
+}
+
+.day-card[data-status="sick"] {
+  border-color: var(--accent);
+}
+
+.day-card-main {
+  flex: 1 1 120px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.day-card-main .member-name {
+  flex: none;
+  margin-left: 0;
+}
+
+.day-card-status {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.day-card-edit {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}

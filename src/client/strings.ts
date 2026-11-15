@@ -2,7 +2,11 @@
 // Kept as one plain object so a second language can be added later
 // by giving it the same shape (see `Strings`).
 
+import type { Severity } from "../shared/check-ins.ts";
+
 export const de = {
+  /** For dates and numbers. */
+  locale: "de-DE",
   appName: "Sick-o-Scope",
   appDescription: "Wer war wann krank? Das Familien-Krankheitstagebuch.",
   loading: "Einen Moment …",
@@ -31,8 +35,33 @@ export const de = {
   today: {
     title: "Heute",
     greeting: (name: string) => `Hallo ${name} 👋`,
-    placeholder: "Hier trägst du bald ein, wem es wie geht.",
+    dateBar: "Datum",
+    previousDay: "Vorheriger Tag",
+    nextDay: "Nächster Tag",
+    pickDate: "Datum wählen",
+    todayPrefix: "Heute",
+    yesterdayPrefix: "Gestern",
+    checkedIn: (done: number, total: number) => `${done} / ${total} eingetragen`,
+    allHealthyToday: "Alle fit heute",
+    allHealthyOn: (day: string) => `Alle fit am ${day}`,
+    noMembers: "Noch keine Familienmitglieder. Leg sie in den Einstellungen an:",
+    toSettings: "Zu den Einstellungen",
+    gap: "Noch nichts eingetragen",
+    healthy: "🙂 Fit",
+    sick: (severityLabel: string) => `🤒 ${severityLabel}`,
+    markHealthy: "Fit",
+    markHealthyLabel: (name: string) => `${name} ist fit`,
+    edit: (name: string) => `Eintrag von ${name} bearbeiten`,
+    deleteEntry: "Eintrag löschen",
+    cancel: "Abbrechen",
   },
+  severity: {
+    1: "Naja",
+    2: "Angeschlagen",
+    3: "Richtig krank",
+    4: "Sofa-Kobold",
+    5: "Totalausfall",
+  } satisfies Record<Severity, string>,
   timeline: {
     title: "Verlauf",
     placeholder: "Hier siehst du bald, wer wann krank war.",

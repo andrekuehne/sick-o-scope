@@ -29,3 +29,22 @@ export async function newFamilySignInLink(familyName: string, userName: string):
   if (!link) throw new Error(`setup printed no Sign-in link:\n${stdout}`);
   return link;
 }
+
+/** Signs in a new Family's first User in this page and adds Members through the app's own API. */
+export async function signedInWithMembers(page: import("@playwright/test").Page, memberNames: string[]) {
+  await page.goto(await newFamilySignInLink("Familie Kühne", "André"));
+  await page.getByRole("button", { name: "Anmelden" }).click();
+  await page.getByRole("heading", { name: "Hallo André 👋" }).waitFor();
+  await page.evaluate(async (names) => {
+    const me = (await (await fetch("/api/me")).json()) as { family: { id: string } };
+    for (const [i, name] of names.entries()) {
+      const res = await fetch(`/api/families/${me.family.id}/members`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name, emoji: ["🦊", "🐻", "🐰", "🐸"][i % 4], colour: "#ff7a59" }),
+      });
+      if (!res.ok) throw new Error(`adding ${name} failed: ${res.status}`);
+    }
+  }, memberNames);
+  await page.reload();
+}

@@ -2,6 +2,7 @@ import { useIsFetching, useMutation, useQueryClient } from "@tanstack/react-quer
 import { useState } from "react";
 import type { Me } from "../../shared/auth.ts";
 import type { Member, MemberInput } from "../../shared/members.ts";
+import { MemberAvatar } from "../components/MemberAvatar.tsx";
 import { addMember, reorderMembers, setMemberArchived, signOut, updateMember } from "../api.ts";
 import { MEMBER_COLOURS, MEMBER_EMOJIS, firstUnused } from "../member-options.ts";
 import { ME_KEY, useSetMe } from "../me.ts";
@@ -228,15 +229,6 @@ function MemberForm({
         </button>
       </div>
     </form>
-  );
-}
-
-/** A Member's emoji avatar, ringed in their colour. */
-function MemberAvatar({ member }: { member: Pick<Member, "emoji" | "colour"> }) {
-  return (
-    <span className="member-avatar" style={{ borderColor: member.colour }} aria-hidden="true">
-      {member.emoji}
-    </span>
   );
 }
 

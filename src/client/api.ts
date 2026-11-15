@@ -1,7 +1,14 @@
 // The client's only way to talk to the Worker. Responses are validated with the
 // shared schemas, so a mismatch fails loudly here instead of deep in a component.
 
+import { z } from "zod";
 import { Me, SignInFailure } from "../shared/auth.ts";
+import {
+  CheckIn,
+  type CheckInStateInput,
+  type FillGapsRequest,
+  FillGapsResult,
+} from "../shared/check-ins.ts";
 import { Member, type MemberInput } from "../shared/members.ts";
 
 /** Who is signed in on this Device, or null when nobody is (or the session ended). */
@@ -63,4 +70,34 @@ export async function reorderMembers(familyId: string, memberIds: string[]): Pro
 export async function setMemberArchived(familyId: string, memberId: string, archived: boolean): Promise<Member> {
   const action = archived ? "archive" : "unarchive";
   return Member.parse(await sendJson("POST", `${membersPath(familyId)}/${encodeURIComponent(memberId)}/${action}`));
+}
+
+const checkInsPath = (familyId: string) => `/api/families/${encodeURIComponent(familyId)}/check-ins`;
+
+/** The Family's Check-ins from `from` to `to`, both included. */
+export async function fetchCheckIns(familyId: string, from: string, to: string): Promise<CheckIn[]> {
+  const res = await fetch(`${checkInsPath(familyId)}?from=${from}&to=${to}`);
+  if (!res.ok) throw new Error(`GET check-ins failed: ${res.status}`);
+  return z.object({ checkIns: z.array(CheckIn) }).parse(await res.json()).checkIns;
+}
+
+/** Saves a Member's day as this complete state, replacing what was there. */
+export async function saveCheckIn(
+  familyId: string,
+  date: string,
+  memberId: string,
+  state: CheckInStateInput,
+): Promise<CheckIn> {
+  return CheckIn.parse(await sendJson("PUT", `${checkInsPath(familyId)}/${date}/${encodeURIComponent(memberId)}`, state));
+}
+
+/** Turns a Member's day back into a Gap. */
+export async function deleteCheckIn(familyId: string, date: string, memberId: string): Promise<void> {
+  const res = await fetch(`${checkInsPath(familyId)}/${date}/${encodeURIComponent(memberId)}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`DELETE check-in failed: ${res.status}`);
+}
+
+/** Writes these Check-ins only where a Member has none for that date yet. */
+export async function fillGaps(familyId: string, checkIns: FillGapsRequest["checkIns"]): Promise<FillGapsResult> {
+  return FillGapsResult.parse(await sendJson("POST", `${checkInsPath(familyId)}/fill-gaps`, { checkIns }));
 }
