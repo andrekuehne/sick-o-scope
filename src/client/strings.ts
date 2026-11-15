@@ -19,6 +19,8 @@ export const de = {
   joined: (parts: string[]) => parts.join(" · "),
   noMembers: "Noch keine Familienmitglieder. Leg sie in den Einstellungen an:",
   toSettings: "Zu den Einstellungen",
+  offline: "📴 Offline: Du siehst den zuletzt geladenen Stand. Speichern geht erst wieder mit Verbindung.",
+  offlineNothingLoaded: "Ohne Verbindung lässt sich gerade nichts laden. Sobald du wieder online bist, geht’s weiter.",
   offlineOrError: "Das hat nicht geklappt. Bitte prüf die Verbindung und versuch es nochmal.",
   askForNewLink: "Bitte lass dir von jemandem aus deiner Familie einen neuen Anmelde-Link schicken.",
   nav: {

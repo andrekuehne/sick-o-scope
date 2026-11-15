@@ -1,7 +1,10 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { useNavigate } from "react-router";
 import { type SignInResult, signIn } from "../api.ts";
 import { useSetMe } from "../me.ts";
+import { forgetOfflineData } from "../offline-data.ts";
+import { useOnline } from "../online.ts";
 import { t } from "../strings.ts";
 
 /**
@@ -10,15 +13,20 @@ import { t } from "../strings.ts";
  */
 export function SignInScreen() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const setMe = useSetMe();
   const [token] = useState(() => window.location.hash.slice(1));
   const [state, setState] = useState<"idle" | "busy" | "error" | SignInResult>("idle");
+  // Signing in needs the network; offline, the banner says so.
+  const online = useOnline();
 
   async function onSignIn() {
     setState("busy");
     try {
       const result = await signIn(token);
       if (result.ok) {
+        // Whatever an earlier sign-in on this browser left behind isn't this session's.
+        forgetOfflineData(queryClient);
         setMe(result.me);
         navigate("/", { replace: true });
       } else {
@@ -42,7 +50,7 @@ export function SignInScreen() {
       ) : (
         <>
           <p className="muted">{t.signIn.text}</p>
-          <button type="button" className="button primary" onClick={onSignIn} disabled={state === "busy"}>
+          <button type="button" className="button primary" onClick={onSignIn} disabled={state === "busy" || !online}>
             {state === "busy" ? t.signIn.busy : t.signIn.button}
           </button>
           {state === "error" && <p className="notice">{t.offlineOrError}</p>}

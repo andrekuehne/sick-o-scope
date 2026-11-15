@@ -1,7 +1,8 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { onlineManager, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import type { CheckInStateInput, FillGapsRequest, FillGapsResult } from "../shared/check-ins.ts";
 import { deleteCheckIn, fetchCheckIns, fillGaps, saveCheckIn } from "./api.ts";
+import { useOnline } from "./online.ts";
 
 const checkInsKey = (familyId: string) => ["check-ins", familyId] as const;
 
@@ -17,12 +18,19 @@ export function useCheckIns(familyId: string, from: string, to: string) {
 export type WriteCallbacks<Result = unknown> = { onSuccess?: (result: Result) => void; onError?: () => void };
 
 /**
- * Writing Check-ins. Every write refreshes whatever Check-ins are on screen, and stays
- * `busy` until that refresh is done. `failed` is about the latest write only.
+ * Writing Check-ins. Every write refreshes whatever Check-ins are on screen. `busy` means no
+ * new write can start: one is under way (until its refresh is done), or the Device is offline.
+ * `failed` is about the latest write only.
  */
 export function useCheckInWrites(familyId: string) {
   const queryClient = useQueryClient();
-  const refresh = () => queryClient.invalidateQueries({ queryKey: checkInsKey(familyId) });
+  const online = useOnline();
+  // A write counts as done once the screen shows it. If the Device went offline right after
+  // saving, the refresh waits for the connection, but the write itself is done.
+  const refresh = () => {
+    const refreshed = queryClient.invalidateQueries({ queryKey: checkInsKey(familyId) });
+    return onlineManager.isOnline() ? refreshed : undefined;
+  };
   const [latest, setLatest] = useState<"save" | "remove" | "fill" | null>(null);
 
   const save = useMutation({
@@ -54,7 +62,7 @@ export function useCheckInWrites(familyId: string) {
       setLatest("fill");
       fill.mutate(checkIns, callbacks);
     },
-    busy: save.isPending || remove.isPending || fill.isPending,
+    busy: save.isPending || remove.isPending || fill.isPending || !online,
     failed: latest !== null && byName[latest].isError,
   };
 }

@@ -4,6 +4,7 @@ import type { Me } from "../../shared/auth.ts";
 import { fetchFamilyUsers, removeUser, signOutFamilyDevice } from "../api.ts";
 import { daysAgo, useLocalToday } from "../dates.ts";
 import { ME_KEY } from "../me.ts";
+import { useOnline } from "../online.ts";
 import { t } from "../strings.ts";
 import { AddDeviceSheet } from "./AddDeviceSheet.tsx";
 
@@ -23,7 +24,8 @@ export function UsersSettings({ me }: { me: Me }) {
   const refresh = () =>
     Promise.all([queryClient.invalidateQueries({ queryKey: usersKey }), queryClient.invalidateQueries({ queryKey: ME_KEY })]);
   const change = useMutation({ mutationFn: (run: () => Promise<void>) => run(), onSuccess: refresh });
-  const busy = change.isPending || users.isFetching;
+  const online = useOnline();
+  const busy = change.isPending || users.isFetching || !online;
 
   return (
     <>
@@ -87,7 +89,7 @@ export function UsersSettings({ me }: { me: Me }) {
         ))}
       </ul>
 
-      <button type="button" className="button primary" disabled={!users.data} onClick={() => setAdding(true)}>
+      <button type="button" className="button primary" disabled={!users.data || !online} onClick={() => setAdding(true)}>
         📲 {t.users.addDevice}
       </button>
       {(change.isError || users.isError) && <p className="notice">{t.offlineOrError}</p>}

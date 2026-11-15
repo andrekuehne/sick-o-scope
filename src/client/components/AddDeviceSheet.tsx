@@ -4,6 +4,7 @@ import { renderSVG } from "uqr";
 import { type FamilyUsers, USER_NAME_MAX_LENGTH, UserName } from "../../shared/users.ts";
 import { createSignInLink } from "../api.ts";
 import { dateTime } from "../dates.ts";
+import { useOnline } from "../online.ts";
 import { t } from "../strings.ts";
 
 /**
@@ -32,6 +33,7 @@ export function AddDeviceSheet({
   });
   const linkFor = forUserId !== null ? (users.find((u) => u.id === forUserId)?.name ?? "") : newName.trim();
   const close = () => dialog.current?.close();
+  const online = useOnline();
 
   useEffect(() => {
     const element = dialog.current;
@@ -90,7 +92,7 @@ export function AddDeviceSheet({
             )}
             <div className="sheet-actions">
               {create.isError && <p className="notice sheet-hint">{t.offlineOrError}</p>}
-              <button type="submit" className="button primary" disabled={create.isPending || !ready}>
+              <button type="submit" className="button primary" disabled={create.isPending || !ready || !online}>
                 {t.addDevice.create}
               </button>
               <button type="button" className="button" onClick={close}>

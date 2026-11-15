@@ -7,6 +7,8 @@ import { UsersSettings } from "../components/UsersSettings.tsx";
 import { addMember, exportCsvUrl, reorderMembers, setMemberArchived, signOut, updateMember } from "../api.ts";
 import { MEMBER_COLOURS, MEMBER_EMOJIS, firstUnused } from "../member-options.ts";
 import { ME_KEY, useSetMe } from "../me.ts";
+import { forgetOfflineData } from "../offline-data.ts";
+import { useOnline } from "../online.ts";
 import { t } from "../strings.ts";
 
 export function SettingsScreen({ me }: { me: Me }) {
@@ -55,8 +57,10 @@ function MembersSettings({ me }: { me: Me }) {
   });
 
   // While anything is being saved, the list on screen may be about to change: hold further taps.
+  // Offline, nothing can be saved at all.
   const refreshing = useIsFetching({ queryKey: ME_KEY }) > 0;
-  const busy = listChange.isPending || saveMember.isPending || refreshing;
+  const online = useOnline();
+  const busy = listChange.isPending || saveMember.isPending || refreshing || !online;
 
   function move(index: number, by: -1 | 1) {
     const ids = active.map((m) => m.id);
@@ -259,12 +263,15 @@ function IconButton({
 }
 
 function SignOutButton() {
+  const queryClient = useQueryClient();
   const setMe = useSetMe();
+  const online = useOnline();
   const [failed, setFailed] = useState(false);
 
   async function onSignOut() {
     try {
       await signOut();
+      forgetOfflineData(queryClient);
       setMe(null);
     } catch {
       setFailed(true);
@@ -273,7 +280,7 @@ function SignOutButton() {
 
   return (
     <div className="sign-out">
-      <button type="button" className="button" onClick={onSignOut}>
+      <button type="button" className="button" disabled={!online} onClick={onSignOut}>
         {t.settings.signOut}
       </button>
       {failed && <p className="notice">{t.offlineOrError}</p>}

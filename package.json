@@ -23,7 +23,9 @@
     "url": "git+https://github.com/andrekuehne/sick-o-scope.git"
   },
   "dependencies": {
+    "@tanstack/query-sync-storage-persister": "^5.107.1",
     "@tanstack/react-query": "^5.107.1",
+    "@tanstack/react-query-persist-client": "^5.107.1",
     "hono": "^4.13.18",
     "react": "^19.3.1",
     "react-dom": "^19.3.1",
