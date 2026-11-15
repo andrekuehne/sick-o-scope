@@ -1,3 +1,4 @@
+import type { SignInLinkRequest } from "../../shared/users.ts";
 import { insertDeviceForSelectedUser, prepareNewDevice } from "./devices.ts";
 import { hashToken, newToken } from "./tokens.ts";
 
@@ -5,29 +6,38 @@ import { hashToken, newToken } from "./tokens.ts";
 export const SIGN_IN_LINK_LIFETIME_MS = 24 * 60 * 60 * 1000;
 
 /**
- * Creates a Sign-in link for an existing User of the Family. Returns the raw token,
- * which exists only here: the database keeps its hash.
- * Refuses a User who isn't in that Family.
+ * Creates a Sign-in link. Returns the raw token, which exists only here: the database
+ * keeps its hash. Returns null for an existing User who isn't in that Family.
+ * `createdBy` is the User who made it in the app; the setup command leaves it out.
  */
 export async function createSignInLink(
   db: D1Database,
-  { familyId, forUserId }: { familyId: string; forUserId: string },
+  { familyId, createdBy = null, ...forWhom }: { familyId: string; createdBy?: string | null } & SignInLinkRequest,
   now = new Date(),
-): Promise<{ token: string; expiresAt: Date }> {
+): Promise<{ token: string; expiresAt: Date } | null> {
   const token = newToken();
   const expiresAt = new Date(now.getTime() + SIGN_IN_LINK_LIFETIME_MS);
+  // Who it signs in (an existing User of the Family, or a new User) goes after these.
+  const linkValues = [crypto.randomUUID(), await hashToken(token), createdBy, now.toISOString(), expiresAt.toISOString()];
   // RETURNING rather than meta.changes: the setup command's database (scripts/wrangler-d1.ts)
   // doesn't report changes when run locally.
-  const inserted = await db
-    .prepare(
-      `INSERT INTO sign_in_links (id, family_id, token_hash, for_user_id, created_at, expires_at)
-       SELECT ?, family_id, ?, user_id, ?, ? FROM family_users WHERE family_id = ? AND user_id = ?
-       RETURNING id`,
-    )
-    .bind(crypto.randomUUID(), await hashToken(token), now.toISOString(), expiresAt.toISOString(), familyId, forUserId)
-    .first<{ id: string }>();
-  if (!inserted) throw new Error("That User isn't in this Family.");
-  return { token, expiresAt };
+  const inserted = await ("forUserId" in forWhom
+    ? db
+        .prepare(
+          `INSERT INTO sign_in_links (id, token_hash, created_by, created_at, expires_at, family_id, for_user_id)
+           SELECT ?, ?, ?, ?, ?, family_id, user_id FROM family_users WHERE family_id = ? AND user_id = ?
+           RETURNING id`,
+        )
+        .bind(...linkValues, familyId, forWhom.forUserId)
+    : db
+        .prepare(
+          `INSERT INTO sign_in_links (id, token_hash, created_by, created_at, expires_at, family_id, new_user_name)
+           SELECT ?, ?, ?, ?, ?, id, ? FROM families WHERE id = ?
+           RETURNING id`,
+        )
+        .bind(...linkValues, forWhom.newUserName, familyId)
+  ).first<{ id: string }>();
+  return inserted ? { token, expiresAt } : null;
 }
 
 /**
@@ -43,8 +53,9 @@ export type Redemption =
   | { ok: false; reason: "unknown" | "used" | "expired" };
 
 /**
- * Redeems a Sign-in link: claims it and signs in a new Device in one transaction,
- * so a link can never sign in two Devices, even when redeemed twice at the same moment.
+ * Redeems a Sign-in link: claims it, creates the new User if the link is for one, and signs
+ * in a new Device, all in one transaction. So a link can never sign in two Devices (or create
+ * two Users), even when redeemed twice at the same moment.
  */
 export async function redeemSignInLink(
   db: D1Database,
@@ -54,23 +65,34 @@ export async function redeemSignInLink(
 ): Promise<Redemption> {
   const tokenHash = await hashToken(token);
   const device = await prepareNewDevice(now);
+  const newUserId = crypto.randomUUID();
   const at = now.toISOString();
+  // The link this redemption just claimed, if it did; every later statement depends on it.
+  const fromClaimedLink = "FROM sign_in_links WHERE token_hash = ? AND used_by_device_id = ?";
 
-  const [claim, inserted] = await db.batch<{ user_id: string }>([
+  const [claim, , , inserted] = await db.batch<{ user_id: string }>([
     // Claims the link, marking it with the new Device's id, only if it is still usable.
     db
       .prepare(
         `UPDATE sign_in_links SET used_at = ?, used_by_device_id = ?
-         WHERE token_hash = ? AND used_at IS NULL AND expires_at > ? AND for_user_id IS NOT NULL`,
+         WHERE token_hash = ? AND used_at IS NULL AND expires_at > ?`,
       )
       .bind(at, device.deviceId, tokenHash, at),
+    // A link for a new User creates that User in the link's Family.
+    db
+      .prepare(`INSERT INTO users (id, display_name, created_at) SELECT ?, new_user_name, ? ${fromClaimedLink} AND new_user_name IS NOT NULL`)
+      .bind(newUserId, at, tokenHash, device.deviceId),
+    db
+      .prepare(`INSERT INTO family_users (family_id, user_id, created_at) SELECT family_id, ?, ? ${fromClaimedLink} AND new_user_name IS NOT NULL`)
+      .bind(newUserId, at, tokenHash, device.deviceId),
     // Signs in the Device only if the claim above succeeded.
     insertDeviceForSelectedUser(
       db,
       device,
       deviceLabel,
       now,
-      "SELECT for_user_id AS user_id FROM sign_in_links WHERE token_hash = ? AND used_by_device_id = ?",
+      `SELECT COALESCE(for_user_id, ?) AS user_id ${fromClaimedLink}`,
+      newUserId,
       tokenHash,
       device.deviceId,
     ),
@@ -82,11 +104,10 @@ export async function redeemSignInLink(
   }
 
   const link = await db
-    .prepare("SELECT used_at, expires_at, for_user_id FROM sign_in_links WHERE token_hash = ?")
+    .prepare("SELECT used_at, expires_at FROM sign_in_links WHERE token_hash = ?")
     .bind(tokenHash)
-    .first<{ used_at: string | null; expires_at: string; for_user_id: string | null }>();
+    .first<{ used_at: string | null; expires_at: string }>();
   if (link?.used_at) return { ok: false, reason: "used" };
   if (link && new Date(link.expires_at) <= now) return { ok: false, reason: "expired" };
-  // Never issued, or a kind of link this version can't redeem yet (one for a new User).
   return { ok: false, reason: "unknown" };
 }

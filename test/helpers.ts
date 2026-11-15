@@ -34,6 +34,7 @@ export function sessionCookieFrom(res: Response): string {
 export async function newFamily(names = { familyName: "Familie Kühne", userName: "André" }, now = new Date()) {
   const { familyId, userId } = await createFamilyWithFirstUser(env.DB, names, now);
   const link = await createSignInLink(env.DB, { familyId, forUserId: userId }, now);
+  if (!link) throw new Error("no Sign-in link");
   return { familyId, userId, token: link.token };
 }
 

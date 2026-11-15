@@ -3,11 +3,18 @@
 // (see src/shared/dates.ts).
 
 import { useEffect, useState } from "react";
-import { addDays, localToday } from "../shared/dates.ts";
+import { addDays, daysBetweenInclusive, localToday } from "../shared/dates.ts";
 import { t } from "./strings.ts";
 
 const shortFormat = new Intl.DateTimeFormat(t.locale, { day: "numeric", month: "short", timeZone: "UTC" });
 const weekdayFormat = new Intl.DateTimeFormat(t.locale, { weekday: "short", day: "numeric", month: "short", timeZone: "UTC" });
+const dateTimeFormat = new Intl.DateTimeFormat(t.locale, {
+  weekday: "short",
+  day: "numeric",
+  month: "short",
+  hour: "2-digit",
+  minute: "2-digit",
+});
 const monthFormat = new Intl.DateTimeFormat(t.locale, { month: "short", timeZone: "UTC" });
 const monthYearFormat = new Intl.DateTimeFormat(t.locale, { month: "short", year: "numeric", timeZone: "UTC" });
 
@@ -33,6 +40,12 @@ export function dayLabel(date: string, today: string): string {
   return weekdayDate(date);
 }
 
+/** When something last happened, by the phone's calendar: "heute", "gestern", "vor 3 Tagen". */
+export function daysAgo(moment: string, today: string): string {
+  const days = daysBetweenInclusive(localToday(new Date(moment)), today) - 1;
+  return new Intl.RelativeTimeFormat(t.locale, { numeric: "auto" }).format(-Math.max(0, days), "day");
+}
+
 /** "15. Nov." */
 export function shortDate(date: string): string {
   return shortFormat.format(utcDate(date));
@@ -46,6 +59,11 @@ export function shortDateRange(from: string, to: string): string {
 /** "Fr., 13. Nov." */
 export function weekdayDate(date: string): string {
   return weekdayFormat.format(utcDate(date));
+}
+
+/** A moment on this phone's clock: "So., 16. Nov., 17:04". */
+export function dateTime(moment: string): string {
+  return dateTimeFormat.format(new Date(moment));
 }
 
 /** "Nov.", or "Jan. 2027" when `withYear`. */

@@ -76,6 +76,39 @@ export async function signedInDevice(db: D1Database, token: string, now: Date): 
   return { deviceId: row.id, userId: row.user_id, renewedUntil };
 }
 
+/** A Family's signed-in Devices, oldest first, for the settings list. */
+export async function devicesOfFamily(db: D1Database, familyId: string, now: Date) {
+  const { results } = await db
+    .prepare(
+      `SELECT d.id, d.user_id, d.label, d.last_seen_at FROM devices d
+       JOIN family_users fu ON fu.user_id = d.user_id
+       WHERE fu.family_id = ? AND d.expires_at > ?
+       ORDER BY d.created_at`,
+    )
+    .bind(familyId, now.toISOString())
+    .all<{ id: string; user_id: string; label: string; last_seen_at: string }>();
+  return results.map((r) => ({ id: r.id, userId: r.user_id, label: r.label, lastSeenAt: r.last_seen_at }));
+}
+
+/** Signs out one of the Family's Devices. False when the Family has no such Device. */
+export async function signOutFamilyDevice(db: D1Database, familyId: string, deviceId: string): Promise<boolean> {
+  const deleted = await db
+    .prepare(
+      `DELETE FROM devices WHERE id = ? AND user_id IN (SELECT user_id FROM family_users WHERE family_id = ?)
+       RETURNING id`,
+    )
+    .bind(deviceId, familyId)
+    .first();
+  return deleted !== null;
+}
+
+/** Signs out every Device of a User who no longer belongs to any Family; a statement for a batch. */
+export function signOutDevicesOfUserWithoutFamily(db: D1Database, userId: string): D1PreparedStatement {
+  return db
+    .prepare("DELETE FROM devices WHERE user_id = ? AND NOT EXISTS (SELECT 1 FROM family_users WHERE user_id = ?)")
+    .bind(userId, userId);
+}
+
 /** Signs out the Device behind a session token, if any. */
 export async function signOutDevice(db: D1Database, token: string): Promise<void> {
   await db.prepare("DELETE FROM devices WHERE session_token_hash = ?").bind(await hashToken(token)).run();

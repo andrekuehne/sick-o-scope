@@ -17,7 +17,7 @@ test("signs in with a Sign-in link, gets greeted, and can sign out again", async
   await expect(page.getByRole("heading", { name: "Hallo André 👋" })).toBeVisible();
 
   await page.getByRole("navigation", { name: "Hauptnavigation" }).getByRole("link", { name: "Einstellungen" }).click();
-  await page.getByRole("button", { name: "Abmelden" }).click();
+  await page.getByRole("button", { name: "Dieses Gerät abmelden" }).click();
   await expect(page.getByRole("heading", { name: "Du bist nicht angemeldet" })).toBeVisible();
 });
 

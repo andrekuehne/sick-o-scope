@@ -49,6 +49,7 @@ try {
   if (command === "family") console.log(`Created Family "${familyName}" with first User "${userName}".`);
 
   const link = await createSignInLink(db, { familyId, forUserId: userId });
+  if (!link) throw new Error("That User isn't in this Family.");
   console.log(`\nSign-in link for ${userName}, valid once until ${link.expiresAt.toLocaleString("de-DE")}:\n`);
   console.log(signInLinkUrl(values["base-url"], link.token));
 } catch (error) {

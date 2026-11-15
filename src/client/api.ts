@@ -10,6 +10,7 @@ import {
   FillGapsResult,
 } from "../shared/check-ins.ts";
 import { Member, type MemberInput } from "../shared/members.ts";
+import { FamilyUsers, SignInLinkCreated, type SignInLinkRequest } from "../shared/users.ts";
 
 /** Who is signed in on this Device, or null when nobody is (or the session ended). */
 export async function fetchMe(): Promise<Me | null> {
@@ -51,8 +52,8 @@ async function sendJson(method: "POST" | "PUT", path: string, body?: unknown): P
   if (!res.ok) throw new Error(`${method} ${path} failed: ${res.status}`);
   return res.json();
 }
-
-const membersPath = (familyId: string) => `/api/families/${encodeURIComponent(familyId)}/members`;
+const familyPath = (familyId: string) => `/api/families/${encodeURIComponent(familyId)}`;
+const membersPath = (familyId: string) => `${familyPath(familyId)}/members`;
 
 export async function addMember(familyId: string, input: MemberInput): Promise<Member> {
   return Member.parse(await sendJson("POST", membersPath(familyId), input));
@@ -72,7 +73,7 @@ export async function setMemberArchived(familyId: string, memberId: string, arch
   return Member.parse(await sendJson("POST", `${membersPath(familyId)}/${encodeURIComponent(memberId)}/${action}`));
 }
 
-const checkInsPath = (familyId: string) => `/api/families/${encodeURIComponent(familyId)}/check-ins`;
+const checkInsPath = (familyId: string) => `${familyPath(familyId)}/check-ins`;
 
 /** The Family's Check-ins from `from` to `to`, both included. */
 export async function fetchCheckIns(familyId: string, from: string, to: string): Promise<CheckIn[]> {
@@ -100,4 +101,28 @@ export async function deleteCheckIn(familyId: string, date: string, memberId: st
 /** Writes these Check-ins only where a Member has none for that date yet. */
 export async function fillGaps(familyId: string, checkIns: FillGapsRequest["checkIns"]): Promise<FillGapsResult> {
   return FillGapsResult.parse(await sendJson("POST", `${checkInsPath(familyId)}/fill-gaps`, { checkIns }));
+}
+
+/** The Family's Users, each with their signed-in Devices. */
+export async function fetchFamilyUsers(familyId: string): Promise<FamilyUsers["users"]> {
+  const res = await fetch(`${familyPath(familyId)}/users`);
+  if (!res.ok) throw new Error(`GET users failed: ${res.status}`);
+  return FamilyUsers.parse(await res.json()).users;
+}
+
+/** Gerät hinzufügen: a new Sign-in link, whose URL exists only in this answer. */
+export async function createSignInLink(familyId: string, forWhom: SignInLinkRequest): Promise<SignInLinkCreated> {
+  return SignInLinkCreated.parse(await sendJson("POST", `${familyPath(familyId)}/sign-in-links`, forWhom));
+}
+
+/** Signs out any Device of the Family. */
+export async function signOutFamilyDevice(familyId: string, deviceId: string): Promise<void> {
+  const res = await fetch(`${familyPath(familyId)}/devices/${encodeURIComponent(deviceId)}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`DELETE device failed: ${res.status}`);
+}
+
+/** Removes a User from the Family, signing out all their Devices. */
+export async function removeUser(familyId: string, userId: string): Promise<void> {
+  const res = await fetch(`${familyPath(familyId)}/users/${encodeURIComponent(userId)}`, { method: "DELETE" });
+  if (!res.ok) throw new Error(`DELETE user failed: ${res.status}`);
 }

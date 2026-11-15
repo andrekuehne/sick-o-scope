@@ -3,6 +3,7 @@ import type { AppEnv } from "../app-env.ts";
 import { requireUser } from "../auth/current-user.ts";
 import { checkInRoutes } from "../check-ins/routes.ts";
 import { memberRoutes } from "../members/routes.ts";
+import { userRoutes } from "../users/routes.ts";
 import { requireFamily } from "./require-family.ts";
 
 /**
@@ -15,3 +16,4 @@ export const familyRoutes = new Hono<AppEnv>();
 familyRoutes.use("*", requireUser, requireFamily);
 familyRoutes.route("/members", memberRoutes);
 familyRoutes.route("/check-ins", checkInRoutes);
+familyRoutes.route("/", userRoutes);

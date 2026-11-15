@@ -793,3 +793,107 @@ h3 {
   border: 1px solid var(--border);
   border-radius: 4px;
 }
+
+/* Geräte & Zugang: one card per User, their Devices below. */
+.user-list {
+  list-style: none;
+  margin: 12px 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.user-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.user-name {
+  font-weight: 700;
+}
+
+.device-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+
+.device-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border);
+}
+
+.device-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.device-seen,
+.device-none {
+  margin: 0;
+  font-size: 0.85rem;
+}
+
+.device-tag {
+  display: inline-block;
+  margin-left: 6px;
+  white-space: nowrap;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  font-size: 0.75rem;
+  font-weight: 700;
+}
+
+.radio-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  font-weight: 400;
+}
+
+.radio-row input {
+  width: 22px;
+  height: 22px;
+  accent-color: var(--accent);
+}
+
+.link-handover {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+  padding-bottom: 8px;
+}
+
+.link-handover p {
+  margin: 0;
+}
+
+/* Always dark on white, whatever the theme: that's what scanners read best. */
+.qr-code {
+  width: min(240px, 70vw);
+  align-self: center;
+  border-radius: 12px;
+  background: #fff;
+}
+
+.link-text {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg);
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.85rem;
+}
