@@ -156,6 +156,9 @@ it("answers bad input with 400, never a server error: repeated Symptoms, mixed-u
     api(`/api/families/${familyId}/check-ins/fill-gaps`, { method: "POST", body: { checkIns }, cookie });
 
   expect((await saveCheckIn(cookie, familyId, today, luna, { status: "sick", severity: 2, symptoms: ["cough", "cough"] })).status).toBe(400);
+  // Only Symptoms from the fixed catalog, on a single day and in gap fills alike.
+  expect((await saveCheckIn(cookie, familyId, today, luna, { status: "sick", severity: 2, symptoms: ["cough", "zombie-bite"] })).status).toBe(400);
+  expect((await fillGaps([{ memberId: luna, date: today, status: "sick", severity: 2, symptoms: ["zombie-bite"] }])).status).toBe(400);
   // fill-gaps is as strict as saving a single day.
   expect((await fillGaps([{ memberId: luna, date: today, status: "healthy", severity: 2 }])).status).toBe(400);
   expect((await fillGaps([{ memberId: luna, date: today, status: "healthy", surprise: true }])).status).toBe(400);

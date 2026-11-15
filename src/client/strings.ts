@@ -1,4 +1,6 @@
 // Every UI string lives here, in German. Components never hard-code text.
+// The one exception is the Symptom catalog (src/shared/symptoms.ts): its names are shared
+// with the Worker, which needs them too (for example for the CSV export).
 // Kept as one plain object so a second language can be added later
 // by giving it the same shape (see `Strings`).
 
@@ -51,8 +53,23 @@ export const de = {
     sick: (severityLabel: string) => `🤒 ${severityLabel}`,
     markHealthy: "Fit",
     markHealthyLabel: (name: string) => `${name} ist fit`,
+    markSick: "Krank…",
+    markSickLabel: (name: string) => `${name} ist krank`,
     edit: (name: string) => `Eintrag von ${name} bearbeiten`,
-    deleteEntry: "Eintrag löschen",
+  },
+  sheet: {
+    title: (name: string, day: string) => `${name} · ${day}`,
+    status: "Wie geht’s?",
+    healthy: "Fit",
+    sick: "Krank",
+    severity: "Wie schlimm?",
+    pickSeverity: "Wähl noch aus, wie schlimm es ist.",
+    symptoms: "Was ist los?",
+    symptomsHint: "Optional: auch ohne Symptome speicherbar.",
+    note: "Notiz",
+    notePlaceholder: "z. B. Fieber nachts 39,2",
+    save: "Speichern",
+    deleteCheckIn: "Eintrag löschen",
     cancel: "Abbrechen",
   },
   severity: {

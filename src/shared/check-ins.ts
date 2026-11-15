@@ -3,19 +3,22 @@
 
 import { z } from "zod";
 import { CalendarDate } from "./dates.ts";
+import { SYMPTOM_KEYS } from "./symptoms.ts";
 
 /** How bad a Sick day was overall, from 1 (Naja) to 5 (Totalausfall). */
 export const Severity = z.union([z.literal(1), z.literal(2), z.literal(3), z.literal(4), z.literal(5)]);
 export type Severity = z.infer<typeof Severity>;
 
-/** A Symptom's stable key, e.g. "runny-nose". (The fixed catalog arrives with Sick days.) */
-export const SymptomKey = z.string().regex(/^[a-z][a-z-]{0,39}$/);
+/** A Symptom's stable key from the fixed catalog, e.g. "runny-nose"; anything else is rejected. */
+export const SymptomKey = z.enum(SYMPTOM_KEYS);
+
+export const NOTE_MAX_LENGTH = 500;
 
 /** An optional short note; blank means none. */
 const Note = z
   .string()
   .trim()
-  .max(500)
+  .max(NOTE_MAX_LENGTH)
   .nullish()
   .transform((note) => note || null);
 

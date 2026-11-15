@@ -2,6 +2,7 @@
 // belongs to the Family before writing (see routes.ts).
 
 import type { CheckIn, CheckInState, FillGapsResult, Severity } from "../../shared/check-ins.ts";
+import type { SymptomKey } from "../../shared/symptoms.ts";
 
 type CheckInRow = {
   member_id: string;
@@ -27,7 +28,7 @@ function toCheckIn(row: CheckInRow): CheckIn {
     ...saved,
     status: "sick",
     severity: row.severity as Severity,
-    symptoms: JSON.parse(row.symptoms) as string[],
+    symptoms: JSON.parse(row.symptoms) as SymptomKey[],
   };
 }
 

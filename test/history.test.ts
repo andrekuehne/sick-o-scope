@@ -2,6 +2,7 @@ import { expect, it } from "vitest";
 import type { CheckIn } from "../src/shared/check-ins.ts";
 import { createHistory } from "../src/shared/history.ts";
 import type { Member } from "../src/shared/members.ts";
+import type { SymptomKey } from "../src/shared/symptoms.ts";
 
 const member = (id: string, archived = false): Member => ({ id, name: id, emoji: "🦊", colour: "#ff7a59", archived });
 const healthy = (memberId: string, date: string): CheckIn => ({
@@ -12,7 +13,7 @@ const healthy = (memberId: string, date: string): CheckIn => ({
   updatedBy: "André",
   updatedAt: "2026-11-15T08:00:00.000Z",
 });
-const sick = (memberId: string, date: string, severity: 1 | 2 | 3 | 4 | 5, symptoms: string[] = []): CheckIn => ({
+const sick = (memberId: string, date: string, severity: 1 | 2 | 3 | 4 | 5, symptoms: SymptomKey[] = []): CheckIn => ({
   ...healthy(memberId, date),
   status: "sick",
   severity,

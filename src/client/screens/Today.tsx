@@ -3,8 +3,11 @@ import { Link, useSearchParams } from "react-router";
 import type { Me } from "../../shared/auth.ts";
 import { addDays, isCalendarDate, localToday } from "../../shared/dates.ts";
 import { createHistory, type DayStatus } from "../../shared/history.ts";
+import type { CheckIn } from "../../shared/check-ins.ts";
 import type { Member } from "../../shared/members.ts";
+import { inCatalogOrder, symptom } from "../../shared/symptoms.ts";
 import { useCheckIns, useCheckInWrites } from "../check-ins.ts";
+import { CheckInSheet } from "../components/CheckInSheet.tsx";
 import { MemberAvatar } from "../components/MemberAvatar.tsx";
 import { t } from "../strings.ts";
 
@@ -22,6 +25,8 @@ export function TodayScreen({ me }: { me: Me }) {
   const writes = useCheckInWrites(familyId);
   const day = createHistory(me.members, checkIns.data ?? []).day(date);
   const gaps = day.members.filter((m) => m.status.kind === "gap");
+  // The Member whose day is open in the editor sheet, if any.
+  const [editing, setEditing] = useState<{ member: Member; startAs: CheckIn["status"] } | null>(null);
 
   return (
     <section className="screen">
@@ -58,11 +63,24 @@ export function TodayScreen({ me }: { me: Me }) {
                 status={checkIns.isPending ? null : status}
                 busy={writes.busy}
                 onHealthy={() => writes.save({ date, memberId: member.id, state: { status: "healthy" } })}
-                onDelete={() => writes.remove({ date, memberId: member.id })}
+                onSick={() => setEditing({ member, startAs: "sick" })}
+                onEdit={() => setEditing({ member, startAs: "healthy" })}
               />
             ))}
           </ul>
         </>
+      )}
+      {editing && (
+        <CheckInSheet
+          key={`${date}|${editing.member.id}`}
+          title={t.sheet.title(editing.member.name, dayLabel(date, today))}
+          checkIn={checkIns.data?.find((c) => c.memberId === editing.member.id && c.date === date) ?? null}
+          startAs={editing.startAs}
+          busy={writes.busy}
+          onSave={(state, done) => writes.save({ date, memberId: editing.member.id, state }, done)}
+          onDelete={(done) => writes.remove({ date, memberId: editing.member.id }, done)}
+          onClose={() => setEditing(null)}
+        />
       )}
       {(writes.failed || checkIns.isError) && <p className="notice">{t.offlineOrError}</p>}
     </section>
@@ -74,63 +92,67 @@ function MemberDayCard({
   status,
   busy,
   onHealthy,
-  onDelete,
+  onSick,
+  onEdit,
 }: {
   member: Member;
   /** null while loading. */
   status: DayStatus | null;
   busy: boolean;
   onHealthy: () => void;
-  onDelete: () => void;
+  onSick: () => void;
+  onEdit: () => void;
 }) {
-  const [editing, setEditing] = useState(false);
-
   return (
     <li className="day-card" data-status={status?.kind ?? "loading"} aria-label={member.name}>
       <MemberAvatar member={member} />
       <div className="day-card-main">
         <span className="member-name">{member.name}</span>
         <span className="day-card-status">{status ? statusText(status) : t.loading}</span>
+        {status?.kind === "sick" && status.symptoms.length > 0 && (
+          <span className="day-card-badges">
+            {inCatalogOrder(status.symptoms)
+              .map(symptom)
+              .map(({ key, name, badge }) => (
+                <span key={key} role="img" aria-label={name} title={name}>
+                  {badge}
+                </span>
+              ))}
+          </span>
+        )}
       </div>
       {status?.kind === "gap" && (
-        <button
-          type="button"
-          className="button primary small"
-          aria-label={t.today.markHealthyLabel(member.name)}
-          disabled={busy}
-          onClick={onHealthy}
-        >
-          {t.today.markHealthy}
-        </button>
+        <div className="day-card-actions">
+          <button
+            type="button"
+            className="button primary small"
+            aria-label={t.today.markHealthyLabel(member.name)}
+            disabled={busy}
+            onClick={onHealthy}
+          >
+            {t.today.markHealthy}
+          </button>
+          <button
+            type="button"
+            className="button small"
+            aria-label={t.today.markSickLabel(member.name)}
+            disabled={busy}
+            onClick={onSick}
+          >
+            {t.today.markSick}
+          </button>
+        </div>
       )}
-      {status && status.kind !== "gap" && !editing && (
+      {status && status.kind !== "gap" && (
         <button
           type="button"
           className="icon-button"
           aria-label={t.today.edit(member.name)}
           title={t.today.edit(member.name)}
-          onClick={() => setEditing(true)}
+          onClick={onEdit}
         >
           ✏️
         </button>
-      )}
-      {editing && status && status.kind !== "gap" && (
-        <div className="day-card-edit">
-          <button
-            type="button"
-            className="button small"
-            disabled={busy}
-            onClick={() => {
-              onDelete();
-              setEditing(false);
-            }}
-          >
-            {t.today.deleteEntry}
-          </button>
-          <button type="button" className="button small" onClick={() => setEditing(false)}>
-            {t.today.cancel}
-          </button>
-        </div>
       )}
     </li>
   );

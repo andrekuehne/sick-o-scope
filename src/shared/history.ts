@@ -4,11 +4,12 @@
 
 import type { CheckIn, Severity } from "./check-ins.ts";
 import type { Member } from "./members.ts";
+import type { SymptomKey } from "./symptoms.ts";
 
 export type DayStatus =
   | { kind: "gap" }
   | { kind: "healthy" }
-  | { kind: "sick"; severity: Severity; symptoms: string[] };
+  | { kind: "sick"; severity: Severity; symptoms: SymptomKey[] };
 
 /** One date from the Family's point of view: its active Members, and how many have a Check-in. */
 export type FamilyDay = {

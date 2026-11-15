@@ -13,6 +13,9 @@ export function useCheckIns(familyId: string, from: string, to: string) {
   });
 }
 
+/** Called after this one write: on success once the refreshed Check-ins are in. */
+export type WriteCallbacks = { onSuccess?: () => void; onError?: () => void };
+
 /**
  * Writing Check-ins. Every write refreshes whatever Check-ins are on screen, and stays
  * `busy` until that refresh is done. `failed` is about the latest write only.
@@ -38,13 +41,13 @@ export function useCheckInWrites(familyId: string) {
   const byName = { save, remove, fill };
 
   return {
-    save: (args: Parameters<typeof save.mutate>[0]) => {
+    save: (args: Parameters<typeof save.mutate>[0], callbacks?: WriteCallbacks) => {
       setLatest("save");
-      save.mutate(args);
+      save.mutate(args, callbacks);
     },
-    remove: (args: Parameters<typeof remove.mutate>[0]) => {
+    remove: (args: Parameters<typeof remove.mutate>[0], callbacks?: WriteCallbacks) => {
       setLatest("remove");
-      remove.mutate(args);
+      remove.mutate(args, callbacks);
     },
     fill: (checkIns: Parameters<typeof fill.mutate>[0]) => {
       setLatest("fill");
