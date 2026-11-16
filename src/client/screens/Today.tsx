@@ -113,7 +113,7 @@ export function TodayScreen({ me }: { me: Me }) {
                 member={member}
                 status={checkIns.isPending ? null : status}
                 isToday={date === today}
-                yesterday={history.statusOf(member.id, addDays(date, -1))}
+                dayBefore={history.statusOf(member.id, addDays(date, -1))}
                 bugDay={history.bugOn(member.id, date)}
                 shortcuts={status.kind === "gap" ? shortcutsAfterSickDay(history, member.id, date) : []}
                 busy={writes.busy}
@@ -186,7 +186,7 @@ function MemberDayCard({
   member,
   status,
   isToday,
-  yesterday,
+  dayBefore,
   bugDay,
   shortcuts,
   busy,
@@ -200,7 +200,7 @@ function MemberDayCard({
   status: DayStatus | null;
   isToday: boolean;
   /** The day before the selected date. */
-  yesterday: DayStatus;
+  dayBefore: DayStatus;
   /** The Bug a Sick day belongs to ("Infekt #3 · Tag 4"); null on other days. */
   bugDay: BugDay | null;
   shortcuts: ShortcutOffer[];
@@ -213,7 +213,7 @@ function MemberDayCard({
   const healthyButton = (
     <button
       type="button"
-      className="button primary small"
+      className="button small fit"
       aria-label={t.today.markHealthyLabel(member.name)}
       disabled={busy}
       onClick={onHealthy}
@@ -221,83 +221,71 @@ function MemberDayCard({
       {t.today.markHealthy}
     </button>
   );
+  const editButton = (label: string, onClick: () => void, disabled = false) => (
+    <button type="button" className="icon-button" aria-label={label} title={label} disabled={disabled} onClick={onClick}>
+      ✏️
+    </button>
+  );
 
   return (
     <li className="day-card" data-status={status?.kind ?? "loading"} aria-label={member.name}>
-      <MemberAvatarLink member={member} />
-      <div className="day-card-main">
-        <span className="member-name">{member.name}</span>
-        <span className="day-card-status">
-          {status ? t.joined([statusText(status), ...(bugDay ? [t.today.bugDay(bugDay.bug.number, bugDay.day)] : [])]) : t.loading}
-        </span>
-        {shortcuts.length > 0 && yesterday.kind === "sick" && (
-          <span className="day-card-status">{t.today.previousDaySick(isToday, t.severityIcon[yesterday.severity], t.severity[yesterday.severity])}</span>
-        )}
-        {status?.kind === "sick" && status.symptoms.length > 0 && (
-          <span className="day-card-badges">
-            {inCatalogOrder(status.symptoms)
-              .map(symptom)
-              .map(({ key, name, badge }) => (
-                <span key={key} role="img" aria-label={name} title={name}>
-                  {badge}
-                </span>
-              ))}
+      <div className="day-card-top">
+        <MemberAvatarLink member={member} />
+        <div className="day-card-main">
+          <span className="day-card-title">
+            <span className="member-name">{member.name}</span>
+            <span className="day-card-status">
+              {" · "}
+              {status ? t.joined([statusText(status), ...(bugDay ? [t.today.bugDay(bugDay.bug.number, bugDay.day)] : [])]) : t.loading}
+            </span>
           </span>
-        )}
+          <span className="day-card-status">{t.today.dayBefore(isToday, previousDayText(dayBefore))}</span>
+          {status?.kind === "sick" && status.symptoms.length > 0 && (
+            <span className="day-card-badges">
+              {inCatalogOrder(status.symptoms)
+                .map(symptom)
+                .map(({ key, name, badge }) => (
+                  <span key={key} role="img" aria-label={name} title={name}>
+                    {badge}
+                  </span>
+                ))}
+            </span>
+          )}
+        </div>
+        {status?.kind === "gap" && shortcuts.length > 0 && editButton(t.today.markSickLabel(member.name), onSick, busy)}
+        {status && status.kind !== "gap" && editButton(t.today.edit(member.name), onEdit)}
       </div>
-      {status?.kind === "gap" && shortcuts.length > 0 && (
-        <>
-          <button
-            type="button"
-            className="icon-button"
-            aria-label={t.today.markSickLabel(member.name)}
-            title={t.today.markSickLabel(member.name)}
-            disabled={busy}
-            onClick={onSick}
-          >
-            ✏️
-          </button>
-          <div className="day-card-actions shortcuts">
-            {shortcuts.map(({ shortcut, state }) => (
-              <button
-                key={shortcut}
-                type="button"
-                className="button small"
-                aria-label={t.today.shortcutLabel(member.name, t.today.shortcut[shortcut])}
-                disabled={busy}
-                onClick={() => onShortcut(state)}
-              >
-                {t.today.shortcut[shortcut]}
-              </button>
-            ))}
-            {healthyButton}
-          </div>
-        </>
-      )}
-      {status?.kind === "gap" && shortcuts.length === 0 && (
+      {status?.kind === "gap" && (
         <div className="day-card-actions">
           {healthyButton}
-          <button
-            type="button"
-            className="button small"
-            aria-label={t.today.markSickLabel(member.name)}
-            disabled={busy}
-            onClick={onSick}
-          >
-            {t.today.markSick}
-          </button>
+          {shortcuts.length > 0 ? (
+            <div className="shortcut-group" role="group" aria-label={t.today.shortcutsLabel(member.name)}>
+              {shortcuts.map(({ shortcut, state }) => (
+                <button
+                  key={shortcut}
+                  type="button"
+                  className="segment"
+                  data-shortcut={shortcut}
+                  aria-label={t.today.shortcutLabel(member.name, t.today.shortcut[shortcut])}
+                  disabled={busy}
+                  onClick={() => onShortcut(state)}
+                >
+                  {t.today.shortcut[shortcut]}
+                </button>
+              ))}
+            </div>
+          ) : (
+            <button
+              type="button"
+              className="button small"
+              aria-label={t.today.markSickLabel(member.name)}
+              disabled={busy}
+              onClick={onSick}
+            >
+              {t.today.markSick}
+            </button>
+          )}
         </div>
-      )}
-      {status && status.kind !== "gap" && (
-        <button
-          type="button"
-          className="icon-button"
-          aria-label={t.today.edit(member.name)}
-          title={t.today.edit(member.name)}
-          onClick={onEdit}
-        >
-          ✏️
-        </button>
       )}
     </li>
   );
@@ -307,6 +295,11 @@ function statusText(status: DayStatus): string {
   if (status.kind === "gap") return t.today.gap;
   if (status.kind === "healthy") return t.today.healthy;
   return t.today.sick(t.severityIcon[status.severity], t.severity[status.severity]);
+}
+
+/** The day before's status, where a Gap is long past "still to do". */
+function previousDayText(status: DayStatus): string {
+  return status.kind === "gap" ? t.today.previousGap : statusText(status);
 }
 
 function DateBar({ date, today, onChange }: { date: string; today: string; onChange: (date: string) => void }) {

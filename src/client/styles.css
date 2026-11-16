@@ -19,6 +19,8 @@
   --sev-4: #e8565a;
   --sev-5: #a8378a;
   --gap-stripe: #cdb9a8;
+  /* Besser on Heute: a lighter, yellower green than Fit, on the way to Gleich's yellow. */
+  --better: #cde8a2;
   /* Family waves: a cool band over the warm days. */
   --wave: #3f6fca;
   --wave-band: rgb(63 111 202 / 0.16);
@@ -43,6 +45,7 @@
     --sev-4: #b8323f;
     --sev-5: #8e2d78;
     --gap-stripe: #5a4a69;
+    --better: #5d7a2c;
     --wave: #9db9f2;
     --wave-band: rgb(157 185 242 / 0.18);
   }
@@ -399,11 +402,11 @@ h3 {
   gap: 8px;
 }
 
+/* Two rows: who and how (with the day before), then the buttons while nothing's logged. */
 .day-card {
   display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  gap: 10px;
   padding: 10px 10px 10px 12px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
@@ -418,15 +421,20 @@ h3 {
   border-color: var(--accent);
 }
 
+.day-card-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .day-card-main {
-  flex: 1 1 120px;
+  flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
 }
 
 .day-card-main .member-name {
-  flex: none;
   margin-left: 0;
 }
 
@@ -435,10 +443,72 @@ h3 {
   font-size: 0.9rem;
 }
 
+/* One row, even at 320px: Fit on the left, then Krank… or Besser · Gleich · Schlechter joined into one. */
 .day-card-actions {
   display: flex;
   gap: 8px;
-  margin-left: auto;
+}
+
+.day-card-actions .button {
+  min-height: 44px;
+}
+
+.button.fit {
+  border-color: var(--day-healthy);
+  background: var(--day-healthy);
+  color: var(--text);
+}
+
+.shortcut-group {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  /* The dividers between the parts. */
+  gap: 2px;
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+/* Three equal parts. */
+.segment {
+  flex: 1 1 0;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 2px;
+  border: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 0.9rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.segment[data-shortcut="better"] {
+  background: var(--better);
+}
+
+.segment[data-shortcut="same"] {
+  background: var(--sev-1);
+}
+
+.segment[data-shortcut="worse"] {
+  background: var(--sev-4);
+}
+
+.segment:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* On the narrowest phones, "Schlechter" still fits its third. */
+@media (max-width: 359px) {
+  .day-card-actions .button.fit {
+    padding: 0 14px;
+  }
+
+  .segment {
+    font-size: 0.8rem;
+  }
 }
 
 .day-card-badges {
@@ -629,21 +699,6 @@ h3 {
 .sheet-hint {
   flex-basis: 100%;
   margin: 0;
-}
-
-/* After a Sick day: Besser · Gleich · Schlechter in equal columns, Fit below, even at 320px. */
-.day-card-actions.shortcuts {
-  flex-basis: 100%;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  margin-left: 0;
-}
-
-.shortcuts .button {
-  min-width: 0;
-  min-height: 48px;
-  padding: 0 4px;
-  font-size: 0.9rem;
 }
 
 .family-streak {

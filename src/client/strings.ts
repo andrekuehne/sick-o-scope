@@ -65,13 +65,16 @@ export const de = {
     markHealthyLabel: (name: string) => `${name} ist fit`,
     markSick: "Krank…",
     markSickLabel: (name: string) => `${name} ist krank`,
-    /** The Sick day before the selected date: "Gestern" when that's today, else "Am Vortag". */
-    previousDaySick: (isToday: boolean, severityIcon: string, severityLabel: string) =>
-      `${isToday ? "Gestern" : "Am Vortag"}: ${severityIcon} ${severityLabel}`,
+    /** The day before the selected date: "Gestern" when that's today, else "Am Vortag". */
+    dayBefore: (isToday: boolean, status: string) => `${isToday ? "Gestern" : "Am Vortag"}: ${status}`,
+    /** A Gap on the day before. */
+    previousGap: "Nichts eingetragen",
     /** The Bug a Sick day belongs to: its number in its Season, and the day of it. */
     bugDay: (n: number, day: number) => `Infekt #${n} · Tag ${day}`,
     shortcut: { better: "Besser", same: "Gleich", worse: "Schlechter" },
     shortcutLabel: (name: string, shortcut: string) => `${name}: ${shortcut}`,
+    /** Besser · Gleich · Schlechter, as one group. */
+    shortcutsLabel: (name: string) => `${name} im Vergleich zum Vortag`,
     familyStreak: (since: string, n: number) => `🌞 Alle fit seit ${since} (${days(n)})`,
     previousFamilyStreak: (n: number) => `Letzte Fit-Strähne: ${days(n)}`,
     edit: (name: string) => `Eintrag von ${name} bearbeiten`,
