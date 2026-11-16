@@ -1213,6 +1213,21 @@ h3 {
   border-bottom: 1px solid var(--border);
 }
 
+/* An Award: its title and who holds it, then what it was won with on a line of its own. */
+.award {
+  gap: 2px 12px;
+}
+
+.award-reason {
+  flex-basis: 100%;
+  font-size: 0.9rem;
+}
+
+.award-so-far {
+  font-size: 0.8rem;
+  font-weight: normal;
+}
+
 /* Heute's celebrations: a line that stands out, and a short shower of emoji over the screen. */
 .celebration {
   margin: 8px 0;

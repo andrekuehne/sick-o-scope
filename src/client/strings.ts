@@ -5,9 +5,20 @@
 // by giving it the same shape (see `Strings`).
 
 import type { Severity } from "../shared/check-ins.ts";
+import type { SymptomKey } from "../shared/symptoms.ts";
 
 const days = (n: number) => `${n} ${n === 1 ? "Tag" : "Tage"}`;
 const checkInCount = (n: number) => `${n} ${n === 1 ? "Eintrag" : "Einträge"}`;
+/** Days in the dative, as in "an 3 Tagen": "1 Tag", "3 Tagen". */
+const daysDative = (n: number) => `${n} ${n === 1 ? "Tag" : "Tagen"}`;
+/** "1,5": at most one decimal place. */
+const decimal = (n: number) => n.toLocaleString("de-DE", { maximumFractionDigits: 1 });
+/** Champion names where "<Symptom>-Champion" wouldn't sound right. */
+const championNames: Partial<Record<SymptomKey, string>> = {
+  "stuffy-nose": "Schniefnasen-Champion",
+  fatigue: "Müdigkeits-Champion",
+  nausea: "Übelkeits-Champion",
+};
 
 export const de = {
   /** For dates and numbers. */
@@ -156,6 +167,42 @@ export const de = {
     noWaves: "In dieser Saison gibt es keine Welle.",
     /** "Welle 2 · 3.–20. Nov. · Samuel, André, Ariane": when and who, never who brought it home. */
     wave: (n: number, range: string, names: string[]) => `Welle ${n} · ${range} · ${names.join(", ")}`,
+  },
+  /** The Season's Awards, on the Saison tab and the Person screen: playful, nobody loses. */
+  awards: {
+    title: "🌟 Auszeichnungen",
+    /** While the Season runs, the Awards can still change hands. */
+    soFar: "Stand heute",
+    name: {
+      "iron-defence": "🛡️ Eiserne Abwehr",
+      "virus-collector": "🦠 Virensammler",
+      "sofa-pro": "🛋️ Sofa-Profi",
+      "bounce-back": "🤸 Stehaufmännchen",
+      bravery: "🎖️ Tapferkeitsmedaille",
+      "season-opener": "🎬 Saisonauftakt",
+      "wave-rider": "🌊 Wellenreiter",
+      unbreakable: "🦸 Unverwüstlich",
+      mystery: "🔮 Mystery-Champion",
+    },
+    /** "😮‍💨 Husten-Champion", "😴 Müdigkeits-Champion" */
+    champion: (key: SymptomKey, badge: string, name: string) =>
+      `${badge} ${championNames[key] ?? `${name.replaceAll(" ", "-")}-Champion`}`,
+    /** What it was won with. */
+    reason: {
+      ironDefence: (n: number) => `${days(n)} am Stück fit`,
+      virusCollector: (n: number) => (n === 1 ? "1 Infekt" : `${n} Infekte`),
+      sofaPro: (n: number) => `${days(n)} krank`,
+      bounceBack: (n: number) => `im Schnitt ${n === 1 ? "1 Tag" : `${decimal(n)} Tage`} pro Infekt`,
+      /** "2 Tage 🛋️ Sofa-Kobold" */
+      bravery: (severity: string, n: number) => `${days(n)} ${severity}`,
+      seasonOpener: (date: string) => `erster Infekt der Saison, am ${date}`,
+      waveRider: (n: number) => `bei ${n === 1 ? "1 Welle" : `${n} Wellen`} dabei`,
+      champion: (name: string, n: number) => `${name} an ${daysDative(n)}`,
+      unbreakable: "kein einziger Krankheitstag",
+      mystery: "krank, aber ganz ohne Symptome",
+    },
+    /** Who holds an Award, on the Saison tab. */
+    holders: (names: string[]) => names.join(", "),
   },
   /** One Member's Person screen: their Season, and their personal records. */
   person: {

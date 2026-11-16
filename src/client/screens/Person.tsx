@@ -4,6 +4,7 @@ import type { Me } from "../../shared/auth.ts";
 import { createHistory, type MemberOverview, seasonOf } from "../../shared/history.ts";
 import { symptom } from "../../shared/symptoms.ts";
 import { useAllCheckIns } from "../check-ins.ts";
+import { AwardList } from "../components/AwardList.tsx";
 import { MemberAvatar } from "../components/MemberAvatar.tsx";
 import { SeasonBar } from "../components/SeasonBar.tsx";
 import { dateRangeWithYear, shortDateRange, useLocalToday } from "../dates.ts";
@@ -58,7 +59,13 @@ export function PersonScreen({ me }: { me: Me }) {
       ) : (
         <>
           {person.stats ? <PersonSeason person={person} /> : <p className="muted">{t.person.empty(member.name)}</p>}
-          {/* The Member's Awards (#19) go here. */}
+          {person.stats && (
+            <AwardList
+              awards={history.awards(season).filter(({ members }) => members.some((m) => m.id === memberId))}
+              season={season}
+              today={today}
+            />
+          )}
           <PersonalRecordList person={person} />
         </>
       )}

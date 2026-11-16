@@ -3,6 +3,7 @@ import { Link } from "react-router";
 import type { Me } from "../../shared/auth.ts";
 import { createHistory, type FamilyWave, type Season, type SeasonStats, type Streak, seasonOf } from "../../shared/history.ts";
 import { useAllCheckIns } from "../check-ins.ts";
+import { AwardList } from "../components/AwardList.tsx";
 import { MemberAvatar } from "../components/MemberAvatar.tsx";
 import { SeasonBar } from "../components/SeasonBar.tsx";
 import { dateRangeWithYear, shortDateRange, useLocalToday } from "../dates.ts";
@@ -10,8 +11,8 @@ import { personPath, seasonsToPick, useSeasonChoice } from "../season-choice.ts"
 import { severityText, t } from "../strings.ts";
 
 /**
- * The Season ("Saison"): one card per Member with the Season's numbers, the Season's Family
- * waves, and the best Streaks ever ("Rekorde"). It opens on the current Season; earlier ones with Check-ins can be picked.
+ * The Season ("Saison"): one card per Member with the Season's numbers, the Season's Awards
+ * and Family waves, and the best Streaks ever ("Rekorde"). It opens on the current Season; earlier ones with Check-ins can be picked.
  * Tapping a Member's card opens their Person screen on the same Season.
  * Everything comes from all of the Family's Check-ins, loaded in one go.
  */
@@ -23,6 +24,7 @@ export function SeasonScreen({ me }: { me: Me }) {
   const bests = useMemo(() => history.bestStreaks(), [history]);
   const stats = history.seasonStats(season);
   const waves = history.waves(season);
+  const awards = history.awards(season);
   // The Seasons with Check-ins, and the current one even before anything's logged in it.
   const seasons = useMemo(() => seasonsToPick(checkIns.data ?? [], seasonOf(today), season), [checkIns.data, today, season]);
   const shown = seasons.findIndex((s) => s.start === season.start);
@@ -53,6 +55,8 @@ export function SeasonScreen({ me }: { me: Me }) {
               ))}
             </ul>
           )}
+
+          {awards.length > 0 && <AwardList awards={awards} season={season} today={today} holders />}
 
           <h2>{t.season.waves}</h2>
           <WaveList waves={waves} />

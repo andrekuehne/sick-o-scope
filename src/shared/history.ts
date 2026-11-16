@@ -94,6 +94,36 @@ export type FamilyWave = {
   members: Member[];
 };
 
+/**
+ * An Award ("Auszeichnung", GLOSSARY.md): a playful title for a Season, with the number it was
+ * won with. The first seven go to whoever did best, sharing it when tied; a Member who won none
+ * of them gets one of the last three instead, so nobody goes without.
+ */
+export type Award =
+  /** Eiserne Abwehr: the longest Healthy Streak in the Season. */
+  | { kind: "iron-defence"; days: number }
+  /** Virensammler: the most Bugs. */
+  | { kind: "virus-collector"; bugs: number }
+  /** Sofa-Profi: the most Sick days. */
+  | { kind: "sofa-pro"; days: number }
+  /** Stehaufmännchen: the shortest Bugs on average (in days), among Members with at least 2. */
+  | { kind: "bounce-back"; days: number }
+  /** Tapferkeitsmedaille: the highest Severity endured, and the most days at it. */
+  | { kind: "bravery"; severity: Severity; days: number }
+  /** Saisonauftakt: the Season's first Bug. */
+  | { kind: "season-opener"; date: string }
+  /** Wellenreiter: caught in the most Family waves. */
+  | { kind: "wave-rider"; waves: number }
+  /** For a Member without any of the above: their most frequent Symptom ("Husten-Champion"). */
+  | { kind: "symptom-champion"; symptom: SymptomKey; days: number }
+  /** …never Sick in the Season ("Unverwüstlich"). */
+  | { kind: "unbreakable" }
+  /** …Sick, but never with a Symptom ("Mystery-Champion"). */
+  | { kind: "mystery" };
+
+/** An Award of a Season, and who holds it: everyone tied for it. */
+export type SeasonAward = { award: Award; members: Member[] };
+
 /** A Bug, and whose it is. */
 type MemberBug = { member: Member; bug: Bug };
 
@@ -163,6 +193,11 @@ export type History = {
   seasonStats(season: Season): SeasonStats[];
   /** The Family waves started in the Season, oldest first. */
   waves(season: Season): FamilyWave[];
+  /**
+   * The Season's Awards, among the Members with Check-ins in it: the seven in their fixed
+   * order, then the fallbacks in the Members' order. Each Member holds at least one.
+   */
+  awards(season: Season): SeasonAward[];
   /** One Member's Season and personal records, as of `today`; null for an unknown Member. */
   memberOverview(memberId: string, season: Season, today: string): MemberOverview | null;
   /**
@@ -305,6 +340,44 @@ export function createHistory(members: Member[], checkIns: CheckIn[]): History {
     return allWaves.filter((wave) => wave.season === season.label);
   }
 
+  function awards(season: Season): SeasonAward[] {
+    const seasonWaves = waves(season);
+    const contenders = seasonStats(season).map((stats): Contender => {
+      const sick = ofMember(stats.member.id).checkIns.flatMap((c) =>
+        c.status === "sick" && season.start <= c.date && c.date <= season.end ? [c] : [],
+      );
+      return {
+        stats,
+        bugs: bugs(stats.member.id).filter((b) => b.season === season.label),
+        daysAtWorst: sick.filter((c) => c.severity === stats.worstSeverity).length,
+        waves: seasonWaves.filter((wave) => wave.members.some((m) => m.id === stats.member.id)).length,
+      };
+    });
+
+    const won = AWARD_RULES.flatMap((rule): SeasonAward[] => {
+      const entries = contenders.flatMap((contender) => {
+        const entry = rule(contender);
+        return entry ? [{ member: contender.stats.member, ...entry }] : [];
+      });
+      const best = biggestBy(entries, (a, b) => compareScores(a.score, b.score));
+      if (!best) return [];
+      const holders = entries.filter((e) => compareScores(e.score, best.score) === 0).map((e) => e.member);
+      return [{ award: best.award, members: holders }];
+    });
+
+    // Everyone without an Award gets a fallback; Members with the very same one share it.
+    const fallbacks = new Map<string, SeasonAward>();
+    for (const { stats } of contenders) {
+      if (won.some(({ members: holders }) => holders.some((m) => m.id === stats.member.id))) continue;
+      const award = fallbackAward(stats);
+      const same = JSON.stringify(award);
+      const shared = fallbacks.get(same);
+      if (shared) shared.members.push(stats.member);
+      else fallbacks.set(same, { award, members: [stats.member] });
+    }
+    return [...won, ...fallbacks.values()];
+  }
+
   function bugOn(memberId: string, date: string): BugDay | null {
     if (statusOf(memberId, date).kind !== "sick") return null;
     const bug = bugs(memberId).find((b) => b.from <= date && date <= b.to);
@@ -428,7 +501,7 @@ export function createHistory(members: Member[], checkIns: CheckIn[]): History {
     return last;
   }
 
-  return { statusOf, day, bugs, bugOn, continuesBug, seasonStats, waves, memberOverview, bestStreaks, loggingStreak, beatsBestFamilyStreak, shortcut, familyStreaks, gapProposals };
+  return { statusOf, day, bugs, bugOn, continuesBug, seasonStats, waves, awards, memberOverview, bestStreaks, loggingStreak, beatsBestFamilyStreak, shortcut, familyStreaks, gapProposals };
 }
 
 /**
@@ -495,6 +568,50 @@ function wavesOf(memberBugs: MemberBug[]): FamilyWave[] {
     perSeason.set(season, number);
     return { from: wave.from, to: wave.to, season, number, members: wave.members };
   });
+}
+
+/** What one Member brings to a Season's Awards. */
+type Contender = { stats: SeasonStats; bugs: Bug[]; daysAtWorst: number; waves: number };
+
+/**
+ * One Award's rule: what a Member would win it with, and their score (higher is better,
+ * compared item by item); null when they can't win it, as with a zero.
+ */
+type AwardRule = (contender: Contender) => { score: number[]; award: Award } | null;
+
+/** The seven Awards that go to whoever did best, in the order they're shown. */
+const AWARD_RULES: AwardRule[] = [
+  ({ stats: { longestHealthyStreak: days } }) => (days ? { score: [days], award: { kind: "iron-defence", days } } : null),
+  ({ stats: { bugs } }) => (bugs > 0 ? { score: [bugs], award: { kind: "virus-collector", bugs } } : null),
+  ({ stats: { sickDays: days } }) => (days > 0 ? { score: [days], award: { kind: "sofa-pro", days } } : null),
+  ({ bugs }) => {
+    if (bugs.length < 2) return null;
+    const days = bugs.reduce((sum, bug) => sum + bug.length, 0) / bugs.length;
+    // The shorter, the better.
+    return { score: [-days], award: { kind: "bounce-back", days } };
+  },
+  ({ stats: { worstSeverity: severity }, daysAtWorst: days }) =>
+    severity ? { score: [severity, days], award: { kind: "bravery", severity, days } } : null,
+  // The earlier, the better.
+  ({ bugs: [first] }) =>
+    first ? { score: [-Number(first.from.replaceAll("-", ""))], award: { kind: "season-opener", date: first.from } } : null,
+  ({ waves }) => (waves > 0 ? { score: [waves], award: { kind: "wave-rider", waves } } : null),
+];
+
+/** The Award for a Member who won none of the seven. */
+function fallbackAward(stats: SeasonStats): Award {
+  if (stats.sickDays === 0) return { kind: "unbreakable" };
+  const [top] = stats.topSymptoms;
+  return top ? { kind: "symptom-champion", symptom: top.symptom, days: top.days } : { kind: "mystery" };
+}
+
+/** Compares two scores of the same length item by item: below zero when `a` is worse. */
+function compareScores(a: number[], b: number[]): number {
+  for (const [i, item] of a.entries()) {
+    const difference = item - (b[i] ?? 0);
+    if (difference !== 0) return difference;
+  }
+  return 0;
 }
 
 /** A Season: 1 September to 31 August, labelled like "2026/27". */
@@ -569,7 +686,12 @@ function largest<T extends number>(values: T[]): T | null {
 
 /** The item with the biggest size, the first one when tied; null when there are none. */
 function biggest<T>(items: T[], size: (item: T) => number): T | null {
-  return items.reduce<T | null>((best, item) => (best === null || size(item) > size(best) ? item : best), null);
+  return biggestBy(items, (a, b) => size(a) - size(b));
+}
+
+/** The biggest item by `compare` (above zero when its first item is bigger), the first one when tied; null when there are none. */
+function biggestBy<T>(items: T[], compare: (a: T, b: T) => number): T | null {
+  return items.reduce<T | null>((best, item) => (best === null || compare(item, best) > 0 ? item : best), null);
 }
 
 /** The first day of the Streak ending on `to`, given which days belong to it. */

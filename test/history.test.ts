@@ -589,3 +589,119 @@ it("counts a wave crossing 31 Aug for the Season it started in", () => {
   ]);
   expect(history.waves(seasonOf("2026-09-01"))).toEqual([]);
 });
+
+it("gives each Award to whoever did best in the Season; ties share it, and zero earns nothing", () => {
+  const history = createHistory(
+    [member("luna"), member("max"), member("sam")],
+    [
+      // Luna and Max had exactly the same Season, and caught their Bugs in one wave.
+      ...["luna", "max"].flatMap((id) => [
+        healthy(id, "2026-11-01"),
+        healthy(id, "2026-11-02"),
+        sick(id, "2026-11-03", 2, ["cough"]),
+      ]),
+      healthy("sam", "2026-11-05"), // one fit day: less than the others'
+    ],
+  );
+  const [luna, max] = [member("luna"), member("max")];
+
+  expect(history.awards(seasonOf("2026-11-15"))).toEqual([
+    { award: { kind: "iron-defence", days: 2 }, members: [luna, max] },
+    { award: { kind: "virus-collector", bugs: 1 }, members: [luna, max] },
+    { award: { kind: "sofa-pro", days: 1 }, members: [luna, max] },
+    // No Stehaufmännchen: nobody had two Bugs.
+    { award: { kind: "bravery", severity: 2, days: 1 }, members: [luna, max] },
+    { award: { kind: "season-opener", date: "2026-11-03" }, members: [luna, max] },
+    { award: { kind: "wave-rider", waves: 1 }, members: [luna, max] },
+    // Sam, never Sick, didn't win any of them.
+    { award: { kind: "unbreakable" }, members: [member("sam")] },
+  ]);
+
+  // Nobody Sick at all: nothing for Sick days, Bugs or waves.
+  const allFit = createHistory([member("luna"), member("max")], [healthy("luna", "2026-11-01"), healthy("max", "2026-11-01")]);
+  expect(allFit.awards(seasonOf("2026-11-15"))).toEqual([{ award: { kind: "iron-defence", days: 1 }, members: [luna, max] }]);
+});
+
+it("gives Stehaufmännchen for the shortest Bugs on average, only among Members with at least two", () => {
+  const history = createHistory(
+    [member("luna"), member("max"), member("sam")],
+    [
+      // Luna: two Bugs of 1 and 2 days, 1.5 on average.
+      sick("luna", "2026-11-01", 1),
+      healthy("luna", "2026-11-02"),
+      sick("luna", "2026-11-20", 1),
+      sick("luna", "2026-11-21", 1),
+      // Max: one Bug of a single day is shorter, but just one.
+      sick("max", "2026-12-10", 1),
+      // Sam: two Bugs of 2 days each.
+      sick("sam", "2027-01-10", 1),
+      sick("sam", "2027-01-11", 1),
+      healthy("sam", "2027-01-12"),
+      sick("sam", "2027-02-10", 1),
+      sick("sam", "2027-02-11", 1),
+    ],
+  );
+
+  const awards = history.awards(seasonOf("2026-11-15"));
+  expect(awards.find(({ award }) => award.kind === "bounce-back")).toEqual({
+    award: { kind: "bounce-back", days: 1.5 },
+    members: [member("luna")],
+  });
+});
+
+it("gives Tapferkeitsmedaille for the highest Severity, and among those for the most days at it", () => {
+  const history = createHistory(
+    [member("luna"), member("max"), member("sam")],
+    [
+      sick("luna", "2026-11-01", 4),
+      sick("luna", "2026-11-02", 4),
+      sick("max", "2026-12-01", 4),
+      sick("max", "2026-12-02", 2),
+      sick("max", "2026-12-03", 2),
+      ...["2027-01-01", "2027-01-02", "2027-01-03"].map((date) => sick("sam", date, 3)),
+    ],
+  );
+
+  const awards = history.awards(seasonOf("2026-11-15"));
+  expect(awards.find(({ award }) => award.kind === "bravery")).toEqual({
+    award: { kind: "bravery", severity: 4, days: 2 },
+    members: [member("luna")],
+  });
+});
+
+it("gives everyone with Check-ins in the Season at least one Award, and Members without none", () => {
+  const history = createHistory(
+    [member("luna"), member("max"), member("sam"), member("ben"), member("oma", true)],
+    [
+      // Luna wins all she can: fit longest, the most Bugs, Sick days and the worst ones, the first Bug.
+      ...["2026-09-01", "2026-09-02", "2026-09-03"].map((date) => healthy("luna", date)),
+      sick("luna", "2026-09-04", 5, ["fever"]),
+      healthy("luna", "2026-09-05"),
+      sick("luna", "2026-09-06", 5, ["fever"]),
+      sick("luna", "2026-09-07", 5),
+      // Max: a cough and a runny nose, one day each; the runny nose comes first in the catalog.
+      sick("max", "2026-10-01", 1, ["cough"]),
+      sick("max", "2026-10-02", 1, ["runny-nose"]),
+      // Sam: Sick without a Symptom.
+      sick("sam", "2026-10-20", 2),
+      // Ben: fit, but not for as long as Luna.
+      healthy("ben", "2026-10-25"),
+      healthy("ben", "2026-10-26"),
+      // Oma: only last Season.
+      sick("oma", "2026-03-01", 3),
+    ],
+  );
+
+  const luna = [member("luna")];
+  expect(history.awards(seasonOf("2026-11-15"))).toEqual([
+    { award: { kind: "iron-defence", days: 3 }, members: luna },
+    { award: { kind: "virus-collector", bugs: 2 }, members: luna },
+    { award: { kind: "sofa-pro", days: 3 }, members: luna },
+    { award: { kind: "bounce-back", days: 1.5 }, members: luna },
+    { award: { kind: "bravery", severity: 5, days: 3 }, members: luna },
+    { award: { kind: "season-opener", date: "2026-09-04" }, members: luna },
+    { award: { kind: "symptom-champion", symptom: "runny-nose", days: 1 }, members: [member("max")] },
+    { award: { kind: "mystery" }, members: [member("sam")] },
+    { award: { kind: "unbreakable" }, members: [member("ben")] },
+  ]);
+});
