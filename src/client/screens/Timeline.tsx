@@ -1,8 +1,8 @@
 import { type RefObject, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Me } from "../../shared/auth.ts";
 import type { Severity } from "../../shared/check-ins.ts";
-import { addDays, datesBetween, isMonday } from "../../shared/dates.ts";
-import { createHistory, type DayStatus, type History, seasonOf } from "../../shared/history.ts";
+import { addDays, datesBetween, daysBetweenInclusive, isMonday } from "../../shared/dates.ts";
+import { createHistory, type DayStatus, type FamilyWave, type History, type Season, seasonOf } from "../../shared/history.ts";
 import type { Member } from "../../shared/members.ts";
 import { inCatalogOrder, symptom } from "../../shared/symptoms.ts";
 import { BUG_LOOKBACK_DAYS, useCheckIns, useCheckInWrites } from "../check-ins.ts";
@@ -60,6 +60,7 @@ export function TimelineScreen({ me }: { me: Me }) {
   const writes = useCheckInWrites(me.family.id);
   const history = useMemo(() => createHistory(me.members, checkIns.data ?? []), [me.members, checkIns.data]);
   const dates = useMemo(() => datesBetween(season.start, to), [season.start, to]);
+  const waves = useMemo(() => wavesShown(history, season), [history, season]);
   // Archived Members only for the days they have Check-ins.
   const lanes = me.members.filter(
     (m) => !m.archived || checkIns.data?.some((c) => c.memberId === m.id && c.date >= season.start),
@@ -125,7 +126,7 @@ export function TimelineScreen({ me }: { me: Me }) {
       ) : (
         <>
           {checkIns.data?.length === 0 && <p className="muted">{t.timeline.empty}</p>}
-          <div className="timeline" data-detail={pxPerDay >= DAY_DETAIL_PX}>
+          <div className="timeline" data-detail={pxPerDay >= DAY_DETAIL_PX} data-waves={waves.length > 0}>
             <div className="timeline-names">
               <div className="timeline-axis-spacer" />
               {lanes.map((member) => (
@@ -137,6 +138,7 @@ export function TimelineScreen({ me }: { me: Me }) {
             <div className="timeline-scroller" ref={scroller} onScroll={measure}>
               <div className="timeline-canvas" style={{ width: dates.length * pxPerDay }}>
                 <Axis dates={dates} drawn={drawn} pxPerDay={pxPerDay} />
+                <WaveBands waves={waves} dates={dates} pxPerDay={pxPerDay} />
                 {lanes.map((member) => (
                   <Lane
                     key={member.id}
@@ -203,6 +205,38 @@ function Axis({ dates, drawn, pxPerDay }: { dates: string[]; drawn: DrawnDays; p
       </div>
     </div>
   );
+}
+
+/**
+ * The Family waves over the Season's days, each with its label: those started in it ("Welle N"),
+ * and one from last Season still running on 1 Sep. That one goes without its number, which
+ * would need all of last Season's Check-ins; only the days just before this Season are loaded.
+ */
+function wavesShown(history: History, season: Season): { wave: FamilyWave; label: string }[] {
+  const last = seasonOf(addDays(season.start, -1));
+  return [
+    ...history
+      .waves(last)
+      .filter((wave) => wave.to >= season.start)
+      .map((wave) => ({ wave, label: t.timeline.earlierWave(last.label) })),
+    ...history.waves(season).map((wave) => ({ wave, label: t.timeline.wave(wave.number) })),
+  ];
+}
+
+/** A band across all lanes over each Family wave's days, cut to the days shown. */
+function WaveBands({ waves, dates, pxPerDay }: { waves: { wave: FamilyWave; label: string }[]; dates: string[]; pxPerDay: number }) {
+  const first = dates[0]!;
+  const last = dates.at(-1)!;
+  return waves.map(({ wave, label }) => {
+    const from = wave.from > first ? wave.from : first;
+    const to = wave.to < last ? wave.to : last;
+    if (from > to) return null;
+    return (
+      <div key={wave.from} className="timeline-wave" style={place(dates.indexOf(from), daysBetweenInclusive(from, to), pxPerDay)}>
+        <span className="timeline-wave-label">{label}</span>
+      </div>
+    );
+  });
 }
 
 /**

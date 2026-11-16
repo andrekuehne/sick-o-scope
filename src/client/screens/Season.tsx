@@ -1,17 +1,17 @@
 import { useMemo } from "react";
 import { Link } from "react-router";
 import type { Me } from "../../shared/auth.ts";
-import { createHistory, type Season, type SeasonStats, type Streak, seasonOf } from "../../shared/history.ts";
+import { createHistory, type FamilyWave, type Season, type SeasonStats, type Streak, seasonOf } from "../../shared/history.ts";
 import { useAllCheckIns } from "../check-ins.ts";
 import { MemberAvatar } from "../components/MemberAvatar.tsx";
 import { SeasonBar } from "../components/SeasonBar.tsx";
-import { dateRangeWithYear, useLocalToday } from "../dates.ts";
+import { dateRangeWithYear, shortDateRange, useLocalToday } from "../dates.ts";
 import { personPath, seasonsToPick, useSeasonChoice } from "../season-choice.ts";
 import { severityText, t } from "../strings.ts";
 
 /**
- * The Season ("Saison"): one card per Member with the Season's numbers, and the best Streaks
- * ever ("Rekorde"). It opens on the current Season; earlier ones with Check-ins can be picked.
+ * The Season ("Saison"): one card per Member with the Season's numbers, the Season's Family
+ * waves, and the best Streaks ever ("Rekorde"). It opens on the current Season; earlier ones with Check-ins can be picked.
  * Tapping a Member's card opens their Person screen on the same Season.
  * Everything comes from all of the Family's Check-ins, loaded in one go.
  */
@@ -22,6 +22,7 @@ export function SeasonScreen({ me }: { me: Me }) {
   const history = useMemo(() => createHistory(me.members, checkIns.data ?? []), [me.members, checkIns.data]);
   const bests = useMemo(() => history.bestStreaks(), [history]);
   const stats = history.seasonStats(season);
+  const waves = history.waves(season);
   // The Seasons with Check-ins, and the current one even before anything's logged in it.
   const seasons = useMemo(() => seasonsToPick(checkIns.data ?? [], seasonOf(today), season), [checkIns.data, today, season]);
   const shown = seasons.findIndex((s) => s.start === season.start);
@@ -52,6 +53,9 @@ export function SeasonScreen({ me }: { me: Me }) {
               ))}
             </ul>
           )}
+
+          <h2>{t.season.waves}</h2>
+          <WaveList waves={waves} />
 
           <h2>{t.season.records}</h2>
           <RecordList
@@ -103,6 +107,20 @@ function SeasonRow({ stats, season }: { stats: SeasonStats; season: Season }) {
         ))}
       </dl>
     </li>
+  );
+}
+
+/** The Season's Family waves: when, and who was caught, in the order their Bugs started. */
+function WaveList({ waves }: { waves: FamilyWave[] }) {
+  if (waves.length === 0) return <p className="muted">{t.season.noWaves}</p>;
+  return (
+    <ul className="record-list" aria-label={t.season.waves}>
+      {waves.map((wave) => (
+        <li key={wave.from} className="record">
+          {t.season.wave(wave.number, shortDateRange(wave.from, wave.to), wave.members.map((m) => m.name))}
+        </li>
+      ))}
+    </ul>
   );
 }
 

@@ -149,6 +149,10 @@ export const de = {
     record: (n: number, range: string) => `${days(n)} (${range})`,
     noRecords: "Noch keine Rekorde. Die kommen mit den ersten Einträgen.",
     empty: "In dieser Saison gibt es keine Einträge.",
+    waves: "🌊 Wellen",
+    noWaves: "In dieser Saison gibt es keine Welle.",
+    /** "Welle 2 · 3.–20. Nov. · Samuel, André, Ariane": when and who, never who brought it home. */
+    wave: (n: number, range: string, names: string[]) => `Welle ${n} · ${range} · ${names.join(", ")}`,
   },
   /** One Member's Person screen: their Season, and their personal records. */
   person: {
@@ -202,6 +206,10 @@ export const de = {
     withSymptoms: (severityLabel: string, symptomNames: string[]) => `${severityLabel} (${symptomNames.join(", ")})`,
     /** In place of the Badges that don't fit on a day. */
     moreBadges: (n: number) => `+${n}`,
+    /** A Family wave's band across the lanes. */
+    wave: (n: number) => `🌊 Welle ${n}`,
+    /** The rest of a wave that started last Season, running into this one. */
+    earlierWave: (seasonLabel: string) => `🌊 Welle aus ${seasonLabel}`,
   },
   settings: {
     title: "Einstellungen",

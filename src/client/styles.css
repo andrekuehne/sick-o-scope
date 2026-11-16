@@ -19,6 +19,9 @@
   --sev-4: #e8565a;
   --sev-5: #a8378a;
   --gap-stripe: #cdb9a8;
+  /* Family waves: a cool band over the warm days. */
+  --wave: #3f6fca;
+  --wave-band: rgb(63 111 202 / 0.16);
   font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   line-height: 1.5;
 }
@@ -40,6 +43,8 @@
     --sev-4: #b8323f;
     --sev-5: #8e2d78;
     --gap-stripe: #5a4a69;
+    --wave: #9db9f2;
+    --wave-band: rgb(157 185 242 / 0.18);
   }
 }
 
@@ -717,12 +722,18 @@ h3 {
 .timeline {
   --lane-height: 44px;
   --axis-height: 40px;
+  --wave-label-height: 20px;
   display: flex;
   gap: 6px;
 }
 
 .timeline[data-detail="true"] {
   --lane-height: 56px;
+}
+
+/* A row under the day numbers for the waves' labels, only when there are any. */
+.timeline[data-waves="true"] {
+  --axis-height: calc(40px + var(--wave-label-height));
 }
 
 .timeline-names {
@@ -747,8 +758,37 @@ h3 {
   overscroll-behavior-x: contain;
 }
 
+.timeline-canvas {
+  position: relative;
+}
+
 .timeline-axis {
   height: var(--axis-height);
+}
+
+/* A Family wave: a band over every lane, labelled in the axis' last row. Taps go through it to the days. */
+.timeline-wave {
+  position: absolute;
+  /* Over the lanes (tinting them), under the axis' first two rows. */
+  z-index: 1;
+  top: calc(var(--axis-height) - var(--wave-label-height));
+  bottom: 0;
+  border-inline: 2px solid var(--wave);
+  border-radius: 8px 8px 0 0;
+  background: var(--wave-band);
+  pointer-events: none;
+}
+
+.timeline-wave-label {
+  position: sticky;
+  left: 0;
+  display: inline-block;
+  padding: 0 4px;
+  color: var(--wave);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: var(--wave-label-height);
+  white-space: nowrap;
 }
 
 /* Everything in the canvas is placed absolutely on the scale, so only what's near the screen is drawn. */

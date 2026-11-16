@@ -79,6 +79,27 @@ export type Bug = {
   worstSeverity: Severity;
 };
 
+/**
+ * A Family wave ("Welle", GLOSSARY.md): Bugs of at least two Members, joined where one
+ * overlaps another Member's or starts at most 5 days after its last Sick day. It runs from the
+ * first Bug's start to the last one's end, counts for the Season it started in, and `number`
+ * counts the Family's waves started in that Season. `members` are who was caught, in the order
+ * their Bugs started: when and who, never who passed a Bug to whom.
+ */
+export type FamilyWave = {
+  from: string;
+  to: string;
+  season: string;
+  number: number;
+  members: Member[];
+};
+
+/** A Bug, and whose it is. */
+type MemberBug = { member: Member; bug: Bug };
+
+/** The most days between one Bug's last Sick day and another's start that still join them into a wave. */
+const WAVE_BREAK_DAYS = 5;
+
 /** The Bug a Sick day belongs to, and which of its days it is ("Infekt #3 · Tag 4"). */
 export type BugDay = { bug: Bug; day: number };
 
@@ -140,6 +161,8 @@ export type History = {
   continuesBug(memberId: string, date: string): boolean;
   /** Each Member with Check-ins in the Season, in the Members' order. */
   seasonStats(season: Season): SeasonStats[];
+  /** The Family waves started in the Season, oldest first. */
+  waves(season: Season): FamilyWave[];
   /** One Member's Season and personal records, as of `today`; null for an unknown Member. */
   memberOverview(memberId: string, season: Season, today: string): MemberOverview | null;
   /**
@@ -274,6 +297,14 @@ export function createHistory(members: Member[], checkIns: CheckIn[]): History {
     return biggest(sickDays, (s) => -s.sickDays);
   }
 
+  /** Every Family wave, worked out once, when first asked for. */
+  let allWaves: FamilyWave[] | null = null;
+
+  function waves(season: Season): FamilyWave[] {
+    allWaves ??= wavesOf(members.flatMap((member) => bugs(member.id).map((bug) => ({ member, bug }))));
+    return allWaves.filter((wave) => wave.season === season.label);
+  }
+
   function bugOn(memberId: string, date: string): BugDay | null {
     if (statusOf(memberId, date).kind !== "sick") return null;
     const bug = bugs(memberId).find((b) => b.from <= date && date <= b.to);
@@ -397,7 +428,7 @@ export function createHistory(members: Member[], checkIns: CheckIn[]): History {
     return last;
   }
 
-  return { statusOf, day, bugs, bugOn, continuesBug, seasonStats, memberOverview, bestStreaks, loggingStreak, beatsBestFamilyStreak, shortcut, familyStreaks, gapProposals };
+  return { statusOf, day, bugs, bugOn, continuesBug, seasonStats, waves, memberOverview, bestStreaks, loggingStreak, beatsBestFamilyStreak, shortcut, familyStreaks, gapProposals };
 }
 
 /**
@@ -426,6 +457,44 @@ function bugsOf(checkIns: CheckIn[]): Bug[] {
     if (c.severity > current.worstSeverity) current.worstSeverity = c.severity;
   }
   return found;
+}
+
+/**
+ * The Family waves among all Members' Bugs, oldest first. Only Bugs of different Members join:
+ * a Member's own Bugs one after another are no wave, and don't stretch one either.
+ */
+function wavesOf(memberBugs: MemberBug[]): FamilyWave[] {
+  const sorted = [...memberBugs].sort((a, b) => (a.bug.from < b.bug.from ? -1 : a.bug.from > b.bug.from ? 1 : 0));
+  // Union-find: each Bug points towards its group's first Bug; two groups merge when Bugs in them join.
+  const group = sorted.map((_, i) => i);
+  const root = (i: number): number => (group[i] === i ? i : (group[i] = root(group[i]!)));
+  sorted.forEach((later, j) => {
+    for (let i = 0; i < j; i++) {
+      const earlier = sorted[i]!;
+      if (earlier.member.id !== later.member.id && later.bug.from <= addDays(earlier.bug.to, WAVE_BREAK_DAYS)) {
+        group[root(j)] = root(i);
+      }
+    }
+  });
+
+  const byGroup = new Map<number, MemberBug[]>();
+  sorted.forEach((entry, i) => byGroup.set(root(i), [...(byGroup.get(root(i)) ?? []), entry]));
+  const found = [...byGroup.values()]
+    .filter((joined) => joined.length > 1)
+    .map((joined) => ({
+      from: joined[0]!.bug.from,
+      to: joined.map((c) => c.bug.to).reduce((a, b) => (a > b ? a : b)),
+      members: [...new Map(joined.map((c) => [c.member.id, c.member])).values()],
+    }))
+    .sort((a, b) => (a.from < b.from ? -1 : 1));
+
+  const perSeason = new Map<string, number>();
+  return found.map((wave) => {
+    const season = seasonOf(wave.from).label;
+    const number = (perSeason.get(season) ?? 0) + 1;
+    perSeason.set(season, number);
+    return { from: wave.from, to: wave.to, season, number, members: wave.members };
+  });
 }
 
 /** A Season: 1 September to 31 August, labelled like "2026/27". */

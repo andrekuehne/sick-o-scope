@@ -497,3 +497,95 @@ it("keeps personal records: the longest Healthy Streak ever, and the fewest Sick
     fewestSickDays: null,
   });
 });
+
+it("finds a Family wave where Bugs of different Members overlap, naming who was caught in the order their Bugs started", () => {
+  const history = createHistory(
+    [member("luna"), member("max"), member("sam")],
+    [
+      sick("max", "2026-11-03", 2),
+      sick("max", "2026-11-04", 3),
+      sick("luna", "2026-11-04", 1), // overlaps Max's Bug
+      sick("luna", "2026-11-06", 1), // the 5th is a Gap: still her Bug
+      healthy("sam", "2026-11-05"),
+    ],
+  );
+
+  expect(history.waves(seasonOf("2026-11-15"))).toEqual([
+    { from: "2026-11-03", to: "2026-11-06", season: "2026/27", number: 1, members: [member("max"), member("luna")] },
+  ]);
+});
+
+it("joins a Bug that starts 5 days after another Member's last Sick day into the wave, but not one that starts 6 days after", () => {
+  const members = [member("luna"), member("max")];
+  const lunasBug = [sick("luna", "2026-11-01", 2), sick("luna", "2026-11-02", 2), healthy("luna", "2026-11-03")];
+
+  const fiveDays = createHistory(members, [...lunasBug, sick("max", "2026-11-07", 1)]);
+  expect(fiveDays.waves(seasonOf("2026-11-15"))).toEqual([
+    { from: "2026-11-01", to: "2026-11-07", season: "2026/27", number: 1, members: [member("luna"), member("max")] },
+  ]);
+  const sixDays = createHistory(members, [...lunasBug, sick("max", "2026-11-08", 1)]);
+  expect(sixDays.waves(seasonOf("2026-11-15"))).toEqual([]);
+});
+
+it("keeps three Bugs in one wave, one after another, even when the first and last don't touch, and numbers the waves in a Season", () => {
+  const history = createHistory(
+    [member("luna"), member("max"), member("sam")],
+    [
+      sick("luna", "2026-10-01", 3),
+      sick("max", "2026-10-04", 2), // 3 days after Luna's
+      sick("sam", "2026-10-09", 1), // 5 days after Max's, 8 after Luna's
+      ...["luna", "max", "sam"].map((id) => healthy(id, "2026-10-10")), // everyone's Bug over
+      sick("luna", "2026-12-01", 2), // a later wave
+      sick("sam", "2026-12-02", 2),
+    ],
+  );
+
+  expect(history.waves(seasonOf("2026-11-15"))).toEqual([
+    {
+      from: "2026-10-01",
+      to: "2026-10-09",
+      season: "2026/27",
+      number: 1,
+      members: [member("luna"), member("max"), member("sam")],
+    },
+    { from: "2026-12-01", to: "2026-12-02", season: "2026/27", number: 2, members: [member("luna"), member("sam")] },
+  ]);
+});
+
+it("never makes a wave of one Member's own Bugs, however close together", () => {
+  const history = createHistory(
+    [member("luna"), member("max")],
+    [
+      sick("luna", "2026-11-01", 2),
+      healthy("luna", "2026-11-02"),
+      sick("luna", "2026-11-03", 2), // her second Bug, a day later
+      sick("luna", "2026-11-04", 2, [], true), // and a third, marked Neuer Infekt
+      sick("max", "2026-11-20", 1), // far from all of them
+    ],
+  );
+
+  expect(history.waves(seasonOf("2026-11-15"))).toEqual([]);
+});
+
+it("counts a wave crossing 31 Aug for the Season it started in", () => {
+  const history = createHistory(
+    [member("luna"), member("max"), member("oma", true)],
+    [
+      sick("luna", "2026-08-30", 2),
+      sick("max", "2026-08-31", 2),
+      sick("max", "2026-09-01", 3),
+      sick("oma", "2026-09-03", 1), // archived Members' Bugs count too
+    ],
+  );
+
+  expect(history.waves(seasonOf("2026-08-30"))).toEqual([
+    {
+      from: "2026-08-30",
+      to: "2026-09-03",
+      season: "2025/26",
+      number: 1,
+      members: [member("luna"), member("max"), member("oma", true)],
+    },
+  ]);
+  expect(history.waves(seasonOf("2026-09-01"))).toEqual([]);
+});
