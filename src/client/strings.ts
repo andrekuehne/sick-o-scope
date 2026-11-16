@@ -150,7 +150,38 @@ export const de = {
     noRecords: "Noch keine Rekorde. Die kommen mit den ersten Einträgen.",
     empty: "In dieser Saison gibt es keine Einträge.",
   },
-  /** Picking a Season, on Verlauf and Saison. */
+  /** One Member's Person screen: their Season, and their personal records. */
+  person: {
+    /** Links to it, from Heute, Verlauf and Saison. */
+    open: (name: string) => `Saison von ${name}`,
+    back: "Zurück",
+    archived: "Archiviert",
+    numbers: "Die Saison in Zahlen",
+    empty: (name: string) => `In dieser Saison gibt es von ${name} keine Einträge.`,
+    compared: (label: string) => `Im Vergleich zur Saison ${label}`,
+    noPrevious: (name: string) => `Da gibt es von ${name} keine Einträge.`,
+    /** "vorher 12 Tage" */
+    before: (value: string) => `vorher ${value}`,
+    /** "4 weniger 🎉", "2 mehr", "gleich viele" */
+    difference: (now: number, then: number) =>
+      now < then ? `${then - now} weniger 🎉` : now > then ? `${now - then} mehr` : "gleich viele",
+    topSymptoms: "Häufigste Symptome",
+    noSymptoms: "Keine Symptome eingetragen.",
+    bugs: "Infekte",
+    noBugs: "Kein Infekt in dieser Saison. 💪",
+    /** "Infekt #2" */
+    bug: (n: number) => `Infekt #${n}`,
+    /** "schlimmster Tag: 🤒 Richtig krank" */
+    worstDay: (severity: string) => `schlimmster Tag: ${severity}`,
+    records: "Persönliche Rekorde",
+    longestHealthyStreak: "💪 Längste Fit-Strähne",
+    fewestSickDays: "🌱 Wenigste Krankheitstage in einer Saison",
+    /** "3 Tage (Saison 2025/26)" */
+    fewestSickDaysRecord: (n: number, label: string) => `${days(n)} (Saison ${label})`,
+    noRecordYet: "Noch keiner",
+    afterFirstSeason: "Kommt, sobald eine Saison vorbei ist",
+  },
+  /** Picking a Season, on Verlauf, Saison and the Person screen. */
   seasonBar: {
     label: "Saison",
     season: (label: string) => `Saison ${label}`,
@@ -266,3 +297,8 @@ export type Strings = typeof de;
 
 /** The active UI strings. German is the only language for now. */
 export const t: Strings = de;
+
+/** A Severity with its picture: "🤒 Richtig krank". */
+export function severityText(severity: Severity): string {
+  return `${t.severityIcon[severity]} ${t.severity[severity]}`;
+}

@@ -4,6 +4,7 @@ import { Link, NavLink, Route, Routes, useLocation, useNavigate } from "react-ro
 import { useMe } from "./me.ts";
 import { forgetOfflineData } from "./offline-data.ts";
 import { useOnline } from "./online.ts";
+import { PersonScreen } from "./screens/Person.tsx";
 import { SettingsScreen } from "./screens/Settings.tsx";
 import { SignInScreen } from "./screens/SignIn.tsx";
 import { SeasonScreen } from "./screens/Season.tsx";
@@ -65,6 +66,7 @@ function SignedInApp() {
         <Route index element={<TodayScreen me={me.data} />} />
         <Route path="verlauf" element={<TimelineScreen me={me.data} />} />
         <Route path="saison" element={<SeasonScreen me={me.data} />} />
+        <Route path="person/:memberId" element={<PersonScreen me={me.data} />} />
         <Route path="einstellungen" element={<SettingsScreen me={me.data} />} />
         <Route path="*" element={<NotFound />} />
       </Routes>

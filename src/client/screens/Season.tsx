@@ -1,29 +1,29 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
+import { Link } from "react-router";
 import type { Me } from "../../shared/auth.ts";
-import type { Severity } from "../../shared/check-ins.ts";
 import { createHistory, type Season, type SeasonStats, type Streak, seasonOf } from "../../shared/history.ts";
 import { useAllCheckIns } from "../check-ins.ts";
 import { MemberAvatar } from "../components/MemberAvatar.tsx";
 import { SeasonBar } from "../components/SeasonBar.tsx";
 import { dateRangeWithYear, useLocalToday } from "../dates.ts";
-import { t } from "../strings.ts";
+import { personPath, seasonsToPick, useSeasonChoice } from "../season-choice.ts";
+import { severityText, t } from "../strings.ts";
 
 /**
  * The Season ("Saison"): one card per Member with the Season's numbers, and the best Streaks
  * ever ("Rekorde"). It opens on the current Season; earlier ones with Check-ins can be picked.
+ * Tapping a Member's card opens their Person screen on the same Season.
  * Everything comes from all of the Family's Check-ins, loaded in one go.
  */
 export function SeasonScreen({ me }: { me: Me }) {
   const today = useLocalToday();
-  const currentSeason = seasonOf(today);
-  const [seasonStart, setSeasonStart] = useState(currentSeason.start);
-  const season = seasonOf(seasonStart);
+  const [season, setSeason] = useSeasonChoice(today);
   const checkIns = useAllCheckIns(me.family.id);
   const history = useMemo(() => createHistory(me.members, checkIns.data ?? []), [me.members, checkIns.data]);
   const bests = useMemo(() => history.bestStreaks(), [history]);
   const stats = history.seasonStats(season);
   // The Seasons with Check-ins, and the current one even before anything's logged in it.
-  const seasons = useMemo(() => seasonsWithCheckIns(checkIns.data ?? [], seasonOf(today)), [checkIns.data, today]);
+  const seasons = useMemo(() => seasonsToPick(checkIns.data ?? [], seasonOf(today), season), [checkIns.data, today, season]);
   const shown = seasons.findIndex((s) => s.start === season.start);
 
   return (
@@ -34,7 +34,7 @@ export function SeasonScreen({ me }: { me: Me }) {
         season={season}
         previous={seasons[shown - 1] ?? null}
         next={seasons[shown + 1] ?? null}
-        onChange={(picked) => setSeasonStart(picked.start)}
+        onChange={setSeason}
       />
 
       {checkIns.isPending ? (
@@ -48,7 +48,7 @@ export function SeasonScreen({ me }: { me: Me }) {
           ) : (
             <ul className="season-table" aria-label={t.season.table}>
               {stats.map((row) => (
-                <SeasonRow key={row.member.id} stats={row} />
+                <SeasonRow key={row.member.id} stats={row} season={season} />
               ))}
             </ul>
           )}
@@ -73,7 +73,7 @@ export function SeasonScreen({ me }: { me: Me }) {
 }
 
 /** One Member's Season, as a card: their numbers, each with what it means. */
-function SeasonRow({ stats }: { stats: SeasonStats }) {
+function SeasonRow({ stats, season }: { stats: SeasonStats; season: Season }) {
   const { member } = stats;
   const days = (n: number | null) => (n === null ? t.season.none : t.days(n));
   const cells: [string, string][] = [
@@ -87,7 +87,12 @@ function SeasonRow({ stats }: { stats: SeasonStats }) {
     <li className="card season-row" aria-label={member.name}>
       <div className="season-row-head">
         <MemberAvatar member={member} />
-        <span className="member-name">{member.name}</span>
+        <Link className="member-name season-row-link" to={personPath(member.id, season)}>
+          {member.name}
+        </Link>
+        <span className="chevron" aria-hidden="true">
+          ›
+        </span>
       </div>
       <dl className="season-stats">
         {cells.map(([label, value]) => (
@@ -114,18 +119,4 @@ function RecordList({ entries }: { entries: { key: string; label: string; streak
       ))}
     </ul>
   );
-}
-
-/** The Seasons that have Check-ins, plus the current one, oldest first. */
-function seasonsWithCheckIns(checkIns: { date: string }[], current: Season): Season[] {
-  const byStart = new Map([[current.start, current]]);
-  for (const { date } of checkIns) {
-    const season = seasonOf(date);
-    byStart.set(season.start, season);
-  }
-  return [...byStart.values()].sort((a, b) => (a.start < b.start ? -1 : 1));
-}
-
-function severityText(severity: Severity): string {
-  return `${t.severityIcon[severity]} ${t.severity[severity]}`;
 }

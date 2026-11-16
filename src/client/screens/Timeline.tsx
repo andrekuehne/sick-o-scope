@@ -8,9 +8,10 @@ import { inCatalogOrder, symptom } from "../../shared/symptoms.ts";
 import { BUG_LOOKBACK_DAYS, useCheckIns, useCheckInWrites } from "../check-ins.ts";
 import { CheckInSheet } from "../components/CheckInSheet.tsx";
 import { SeasonBar } from "../components/SeasonBar.tsx";
-import { MemberAvatar } from "../components/MemberAvatar.tsx";
+import { MemberAvatarLink } from "../components/MemberAvatarLink.tsx";
 import { NoMembersNotice } from "../components/NoMembersNotice.tsx";
 import { dayLabel, monthLabel, shortDateRange, useLocalToday } from "../dates.ts";
+import { useSeasonChoice } from "../season-choice.ts";
 import { t } from "../strings.ts";
 
 /**
@@ -49,8 +50,7 @@ type DayColour = keyof typeof DAY_COLOURS | "blank";
 export function TimelineScreen({ me }: { me: Me }) {
   const today = useLocalToday();
   const currentSeason = seasonOf(today);
-  const [seasonStart, setSeasonStart] = useState(currentSeason.start);
-  const season = seasonOf(seasonStart);
+  const [season, setSeason] = useSeasonChoice(today);
   const to = season.end < today ? season.end : today;
   const [zoom, setZoom] = useState<ZoomStep>("week");
   const pxPerDay = ZOOM_STEPS[zoom];
@@ -107,7 +107,7 @@ export function TimelineScreen({ me }: { me: Me }) {
         season={season}
         previous={seasonOf(addDays(season.start, -1))}
         next={season.start < currentSeason.start ? seasonOf(addDays(season.end, 1)) : null}
-        onChange={(picked) => setSeasonStart(picked.start)}
+        onChange={setSeason}
       />
 
       <div className="zoom-steps" role="group" aria-label={t.timeline.zoom}>
@@ -126,11 +126,11 @@ export function TimelineScreen({ me }: { me: Me }) {
         <>
           {checkIns.data?.length === 0 && <p className="muted">{t.timeline.empty}</p>}
           <div className="timeline" data-detail={pxPerDay >= DAY_DETAIL_PX}>
-            <div className="timeline-names" aria-hidden="true">
+            <div className="timeline-names">
               <div className="timeline-axis-spacer" />
               {lanes.map((member) => (
                 <div key={member.id} className="timeline-name">
-                  <MemberAvatar member={member} />
+                  <MemberAvatarLink member={member} season={season} />
                 </div>
               ))}
             </div>

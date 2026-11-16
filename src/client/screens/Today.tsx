@@ -9,7 +9,7 @@ import { inCatalogOrder, symptom } from "../../shared/symptoms.ts";
 import { BUG_LOOKBACK_DAYS, MAX_RANGE_DAYS, useCheckIns, useCheckInWrites } from "../check-ins.ts";
 import { CheckInSheet } from "../components/CheckInSheet.tsx";
 import { GapFillCard } from "../components/GapFillCard.tsx";
-import { MemberAvatar } from "../components/MemberAvatar.tsx";
+import { MemberAvatarLink } from "../components/MemberAvatarLink.tsx";
 import { Milestones } from "../components/Milestones.tsx";
 import { NoMembersNotice } from "../components/NoMembersNotice.tsx";
 import { dayLabel, shortDate, useLocalToday } from "../dates.ts";
@@ -224,7 +224,7 @@ function MemberDayCard({
 
   return (
     <li className="day-card" data-status={status?.kind ?? "loading"} aria-label={member.name}>
-      <MemberAvatar member={member} />
+      <MemberAvatarLink member={member} />
       <div className="day-card-main">
         <span className="member-name">{member.name}</span>
         <span className="day-card-status">

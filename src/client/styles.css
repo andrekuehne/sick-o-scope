@@ -1016,11 +1016,68 @@ h3 {
   gap: 8px;
 }
 
+/* The whole card opens the Member's Person screen: the name's link stretches over it. */
+.season-row {
+  position: relative;
+}
+
 .season-row-head {
   display: flex;
   align-items: center;
   gap: 10px;
   margin-bottom: 10px;
+}
+
+.season-row-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.season-row-link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius);
+}
+
+.chevron {
+  color: var(--muted);
+  font-size: 1.4rem;
+  line-height: 1;
+}
+
+/* Person screen: a Member's Season and records. */
+.back-button {
+  margin: 4px 0 0 -8px;
+  padding: 8px;
+  border: none;
+  background: transparent;
+  color: var(--accent);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.person-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.comparison {
+  margin: 12px 0;
+}
+
+.comparison dd {
+  margin: 0;
+}
+
+/* A Member's avatar that opens their Person screen (Heute, Verlauf). */
+.avatar-link {
+  display: inline-flex;
+  flex: none;
+  border-radius: 50%;
+  text-decoration: none;
 }
 
 .season-stats {
