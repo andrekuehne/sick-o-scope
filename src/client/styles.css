@@ -445,12 +445,24 @@ h3 {
 
 /* One row, even at 320px: Fit on the left, then Krank… or Besser · Gleich · Schlechter joined into one. */
 .day-card-actions {
+  /* The narrowest a third of Besser · Gleich · Schlechter may get with "Schlechter" in it. */
+  --segment-min: 76px;
   display: flex;
   gap: 8px;
 }
 
 .day-card-actions .button {
   min-height: 44px;
+}
+
+/*
+ * Fit takes a quarter of the row (as wide as each third of the joined button next to it), or
+ * whatever is left once the thirds have their minimum, whichever is less. The 12px are the gaps.
+ */
+.day-card-actions .button.fit {
+  flex: none;
+  width: max(48px, min(calc((100% - 12px) / 4), calc(100% - 12px - 3 * var(--segment-min))));
+  padding: 0;
 }
 
 .button.fit {
@@ -502,8 +514,8 @@ h3 {
 
 /* On the narrowest phones, "Schlechter" still fits its third. */
 @media (max-width: 359px) {
-  .day-card-actions .button.fit {
-    padding: 0 14px;
+  .day-card-actions {
+    --segment-min: 68px;
   }
 
   .segment {
