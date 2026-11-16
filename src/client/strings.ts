@@ -76,6 +76,12 @@ export const de = {
     previousFamilyStreak: (n: number) => `Letzte Fit-Strähne: ${days(n)}`,
     edit: (name: string) => `Eintrag von ${name} bearbeiten`,
   },
+  milestones: {
+    loggingStreak: (n: number) => `📋 Lückenlos seit ${n === 1 ? "1 Tag" : `${n} Tagen`}`,
+    family: (n: number) => `🎉 ${n} Tage alle fit! Weiter so!`,
+    newBest: "🏆 Neuer Rekord: So lange waren noch nie alle fit!",
+    logging: (n: number) => `🎉 ${n} Tage lückenlos eingetragen. Danke fürs Dranbleiben!`,
+  },
   gapFill: {
     /** "Luna: 3 Tage fehlen (12.–14. Nov.)" */
     title: (names: string, n: number, range: string) => `${names}: ${n === 1 ? "1 Tag fehlt" : `${n} Tage fehlen`} (${range})`,

@@ -72,6 +72,10 @@ _Avoid_: Episode, spell, run
 A run of consecutive days on which every active Member of the Family has a Check-in, whatever its status. It rewards honest logging, not health. (The German UI says "Lückenlos".)
 _Avoid_: Check-in streak, completeness
 
+**Milestone**:
+A length of the everyone-Healthy Streak or the Logging Streak worth celebrating, like 7 or 30 days. Each Device celebrates it once, while it's still news.
+_Avoid_: Achievement, goal
+
 **Family wave**:
 A time when Bugs of at least two Members overlap or follow closely on each other, with at most 5 days between one Bug's last Sick day and the next one's start. It says when and who, never who passed a Bug to whom. (The German UI says "Welle".)
 _Avoid_: Outbreak, epidemic, infection chain, patient zero

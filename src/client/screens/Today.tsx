@@ -10,6 +10,7 @@ import { BUG_LOOKBACK_DAYS, MAX_RANGE_DAYS, useCheckIns, useCheckInWrites } from
 import { CheckInSheet } from "../components/CheckInSheet.tsx";
 import { GapFillCard } from "../components/GapFillCard.tsx";
 import { MemberAvatar } from "../components/MemberAvatar.tsx";
+import { Milestones } from "../components/Milestones.tsx";
 import { NoMembersNotice } from "../components/NoMembersNotice.tsx";
 import { dayLabel, shortDate, useLocalToday } from "../dates.ts";
 import { useDismissedGapProposals } from "../gap-fill-dismissals.ts";
@@ -81,6 +82,7 @@ export function TodayScreen({ me }: { me: Me }) {
             </button>
           </div>
           {!checkIns.isPending && range.to === today && <FamilyStreakLine history={history} today={today} />}
+          {!checkIns.isPending && date === today && <Milestones me={me} today={today} />}
           {gapFillNotice && date === today && (
             <p className="notice" role="status">
               {gapFillNotice}

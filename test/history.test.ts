@@ -1,7 +1,13 @@
 import { expect, it } from "vitest";
 import type { CheckIn } from "../src/shared/check-ins.ts";
 import { addDays } from "../src/shared/dates.ts";
-import { createHistory, seasonOf } from "../src/shared/history.ts";
+import {
+  createHistory,
+  HEALTHY_MILESTONES,
+  LOGGING_MILESTONES,
+  milestoneJustReached,
+  seasonOf,
+} from "../src/shared/history.ts";
 import type { Member } from "../src/shared/members.ts";
 import type { SymptomKey } from "../src/shared/symptoms.ts";
 
@@ -361,4 +367,37 @@ it("counts the Logging Streak up to yesterday while today is still being logged,
   // A Gap yesterday: nothing to count, even if today is complete.
   const gapYesterday = logged.filter((c) => !(c.memberId === "luna" && c.date === "2026-11-14"));
   expect(createHistory(members, gapYesterday).loggingStreak("2026-11-15")).toBeNull();
+});
+
+it("names the Milestone a Streak has just reached (within the last week): 7, 14, 30, 50, 100 days everyone Healthy, 30 and 100 Lückenlos", () => {
+  const streak = (days: number) => ({ from: "2026-01-01", to: "2026-01-01", days });
+
+  expect(milestoneJustReached(streak(6), HEALTHY_MILESTONES)).toBeNull();
+  expect(milestoneJustReached(streak(7), HEALTHY_MILESTONES)).toBe(7);
+  // Still news a few days later, for a Device that wasn't opened in between…
+  expect(milestoneJustReached(streak(20), HEALTHY_MILESTONES)).toBe(14);
+  // …but not weeks later: 14 was reached 15 days ago, and 30 isn't there yet.
+  expect(milestoneJustReached(streak(29), HEALTHY_MILESTONES)).toBeNull();
+  expect(milestoneJustReached(streak(106), HEALTHY_MILESTONES)).toBe(100);
+  expect(milestoneJustReached(streak(120), HEALTHY_MILESTONES)).toBeNull();
+  expect(milestoneJustReached(streak(29), LOGGING_MILESTONES)).toBeNull();
+  expect(milestoneJustReached(streak(30), LOGGING_MILESTONES)).toBe(30);
+  expect(milestoneJustReached(null, HEALTHY_MILESTONES)).toBeNull();
+});
+
+it("knows when the everyone-Healthy Streak beats every earlier one; matching the best isn't enough", () => {
+  const members = [member("luna"), member("max")];
+  const earlier = [...healthyDays(["luna", "max"], "2026-11-01", "2026-11-05"), sick("max", "2026-11-06", 1)];
+
+  // 5 days now against 5 before: not yet.
+  const level = createHistory(members, [...earlier, ...healthyDays(["luna", "max"], "2026-11-07", "2026-11-11")]);
+  expect(level.beatsBestFamilyStreak("2026-11-11")).toBe(false);
+  // A sixth day: a new best.
+  const ahead = createHistory(members, [...earlier, ...healthyDays(["luna", "max"], "2026-11-07", "2026-11-12")]);
+  expect(ahead.beatsBestFamilyStreak("2026-11-12")).toBe(true);
+  // Today still being logged doesn't take it away: the Streak runs through yesterday.
+  expect(ahead.beatsBestFamilyStreak("2026-11-13")).toBe(true);
+  // The very first Streak has nothing to beat yet.
+  const first = createHistory(members, healthyDays(["luna", "max"], "2026-11-01", "2026-11-20"));
+  expect(first.beatsBestFamilyStreak("2026-11-20")).toBe(false);
 });

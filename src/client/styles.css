@@ -1048,3 +1048,40 @@ h3 {
   padding: 10px 0;
   border-bottom: 1px solid var(--border);
 }
+
+/* Heute's celebrations: a line that stands out, and a short shower of emoji over the screen. */
+.celebration {
+  margin: 8px 0;
+  padding: 10px 14px;
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  font-weight: 700;
+}
+
+.confetti {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.confetti span {
+  position: absolute;
+  top: -2rem;
+  font-size: 1.6rem;
+  animation: confetti-fall 2.6s ease-in forwards;
+}
+
+@keyframes confetti-fall {
+  to {
+    transform: translateY(110vh) rotate(540deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .confetti {
+    display: none;
+  }
+}
+

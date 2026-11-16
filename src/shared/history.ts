@@ -71,6 +71,18 @@ export type BestStreaks = {
  */
 export type Shortcut = "like-yesterday" | "same" | "better" | "worse";
 
+/** Milestones of the everyone-Healthy Streak, in days. */
+export const HEALTHY_MILESTONES = [7, 14, 30, 50, 100] as const;
+
+/** Milestones of the Logging Streak ("Lückenlos"), in days. */
+export const LOGGING_MILESTONES = [30, 100] as const;
+
+/**
+ * How long a Milestone stays news: a Device that wasn't opened for a few days still celebrates
+ * it, but one opened weeks later (or a new one) doesn't celebrate what's long past.
+ */
+const MILESTONE_NEWS_DAYS = 7;
+
 /** How far back the gap-fill card looks: Gaps that began earlier (a long break) never prompt. */
 export const GAP_FILL_DAYS = 14;
 
@@ -111,6 +123,11 @@ export type History = {
    * up to `date` once it's complete; null when the day before wasn't fully logged either.
    */
   loggingStreak(date: string): Streak | null;
+  /**
+   * Whether the everyone-Healthy Streak as of `date` (see `familyStreaks`) is longer than
+   * every earlier one. Matching the best isn't enough, and the first Streak has none to beat.
+   */
+  beatsBestFamilyStreak(date: string): boolean;
   /** The complete state the shortcut would save on `date`; null when it makes no sense there. */
   shortcut(shortcut: Shortcut, memberId: string, date: string): CheckInState | null;
   /**
@@ -246,14 +263,30 @@ export function createHistory(members: Member[], checkIns: CheckIn[]): History {
       const healthyDates = memberCheckIns.filter((c) => c.status === "healthy").map((c) => c.date);
       return [{ member, healthy: longest(streaksOf(healthyDates)) }];
     });
-    const countedDates = checkIns.filter((c) => active.some((m) => m.id === c.memberId)).map((c) => c.date);
-    if (earliest === null || countedDates.length === 0) return { familyHealthy: null, logging: null, members: memberBests };
-    const dates = datesBetween(earliest, countedDates.reduce((a, b) => (a > b ? a : b)));
     return {
-      familyHealthy: longest(streaksOf(dates.filter((date) => familyDay(date) === "healthy"))),
-      logging: longest(streaksOf(dates.filter(fullyLogged))),
+      familyHealthy: longest(familyHealthyStreaks()),
+      logging: longest(streaksOf(countedDates().filter(fullyLogged))),
       members: memberBests,
     };
+  }
+
+  /** Every everyone-Healthy Streak, oldest first. */
+  function familyHealthyStreaks(): Streak[] {
+    return streaksOf(countedDates().filter((date) => familyDay(date) === "healthy"));
+  }
+
+  /** Every day from the first to the last Check-in of a Member who counts for the Family. */
+  function countedDates(): string[] {
+    const logged = checkIns.filter((c) => active.some((m) => m.id === c.memberId)).map((c) => c.date);
+    if (earliest === null || logged.length === 0) return [];
+    return datesBetween(earliest, logged.reduce((a, b) => (a > b ? a : b)));
+  }
+
+  function beatsBestFamilyStreak(date: string): boolean {
+    const { current } = familyStreaks(date);
+    if (!current) return false;
+    const best = longest(familyHealthyStreaks().filter((streak) => streak.to < current.from));
+    return best !== null && current.days > best.days;
   }
 
   function loggingStreak(date: string): Streak | null {
@@ -299,7 +332,7 @@ export function createHistory(members: Member[], checkIns: CheckIn[]): History {
     return last;
   }
 
-  return { statusOf, day, bugs, bugOn, continuesBug, seasonStats, bestStreaks, loggingStreak, shortcut, familyStreaks, gapProposals };
+  return { statusOf, day, bugs, bugOn, continuesBug, seasonStats, bestStreaks, loggingStreak, beatsBestFamilyStreak, shortcut, familyStreaks, gapProposals };
 }
 
 /**
@@ -369,6 +402,15 @@ function streaksOf(dates: string[]): Streak[] {
     }
   }
   return streaks;
+}
+
+/**
+ * The Milestone (a length in days) the Streak has just reached, that is within the last week;
+ * the highest if several. null when none is that recent.
+ */
+export function milestoneJustReached(streak: Streak | null, milestones: readonly number[]): number | null {
+  if (!streak) return null;
+  return largest(milestones.filter((days) => streak.days >= days && streak.days - days < MILESTONE_NEWS_DAYS));
 }
 
 /** The longest of the Streaks, the earliest one when tied; null when there are none. */
