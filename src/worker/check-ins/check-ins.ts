@@ -43,6 +43,18 @@ export async function checkInsBetween(db: D1Database, familyId: string, from: st
   return results.map(toCheckIn);
 }
 
+/**
+ * Every Check-in of the Family, by date: what records and earlier Seasons are worked out from.
+ * A Family's data stays small (around a thousand Check-ins a year), so it comes in one go.
+ */
+export async function allCheckIns(db: D1Database, familyId: string): Promise<CheckIn[]> {
+  const { results } = await db
+    .prepare(`${SELECT_CHECK_INS} WHERE c.family_id = ? ORDER BY c.date, c.member_id`)
+    .bind(familyId)
+    .all<CheckInRow>();
+  return results.map(toCheckIn);
+}
+
 /** A Check-in together with its Member's name, as the CSV export lists it. */
 export type CheckInWithMemberName = CheckIn & { memberName: string };
 

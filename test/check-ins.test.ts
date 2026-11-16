@@ -159,6 +159,23 @@ it("keeps Families apart: another Family's Check-ins can't be read or written", 
   ]);
 });
 
+it("loads all of a Family's Check-ins at once, however far back, and only that Family's", async () => {
+  const a = await familyWith("Luna");
+  const b = await familyWith("Ben");
+  const luna = a.members[0]!.id;
+  const longAgo = addDays(today, -800); // further back than any date range may reach
+  await saveCheckIn(a.cookie, a.familyId, longAgo, luna, { status: "sick", severity: 2 });
+  await saveCheckIn(a.cookie, a.familyId, today, luna, { status: "healthy" });
+  await saveCheckIn(b.cookie, b.familyId, today, b.members[0]!.id, { status: "healthy" });
+
+  const all = await json<{ checkIns: CheckIn[] }>(api(`/api/families/${a.familyId}/check-ins/all`, { cookie: a.cookie }));
+  expect(all.checkIns.map((c) => [c.memberId, c.date, c.status])).toEqual([
+    [luna, longAgo, "sick"],
+    [luna, today, "healthy"],
+  ]);
+  expect((await api(`/api/families/${b.familyId}/check-ins/all`, { cookie: a.cookie })).status).toBe(404);
+});
+
 it("has a database that refuses inconsistent days even if a bug got past the API", async () => {
   const { familyId, members } = await familyWith("Luna");
   const insert = (date: string, status: string, severity: number | null) =>

@@ -7,6 +7,7 @@ import type { Member } from "../../shared/members.ts";
 import { inCatalogOrder, symptom } from "../../shared/symptoms.ts";
 import { BUG_LOOKBACK_DAYS, useCheckIns, useCheckInWrites } from "../check-ins.ts";
 import { CheckInSheet } from "../components/CheckInSheet.tsx";
+import { SeasonBar } from "../components/SeasonBar.tsx";
 import { MemberAvatar } from "../components/MemberAvatar.tsx";
 import { NoMembersNotice } from "../components/NoMembersNotice.tsx";
 import { dayLabel, monthLabel, shortDateRange, useLocalToday } from "../dates.ts";
@@ -102,26 +103,12 @@ export function TimelineScreen({ me }: { me: Me }) {
     <section className="screen">
       <h1>{t.timeline.title}</h1>
 
-      <nav className="date-bar" aria-label={t.timeline.seasonBar}>
-        <button
-          type="button"
-          className="icon-button"
-          aria-label={t.timeline.previousSeason}
-          onClick={() => setSeasonStart(seasonOf(addDays(season.start, -1)).start)}
-        >
-          ◀️
-        </button>
-        <span className="date-bar-label">{t.timeline.season(season.label)}</span>
-        <button
-          type="button"
-          className="icon-button"
-          aria-label={t.timeline.nextSeason}
-          disabled={season.start >= currentSeason.start}
-          onClick={() => setSeasonStart(seasonOf(addDays(season.end, 1)).start)}
-        >
-          ▶️
-        </button>
-      </nav>
+      <SeasonBar
+        season={season}
+        previous={seasonOf(addDays(season.start, -1))}
+        next={season.start < currentSeason.start ? seasonOf(addDays(season.end, 1)) : null}
+        onChange={(picked) => setSeasonStart(picked.start)}
+      />
 
       <div className="zoom-steps" role="group" aria-label={t.timeline.zoom}>
         {(Object.keys(ZOOM_STEPS) as ZoomStep[]).map((step) => (

@@ -83,6 +83,13 @@ export async function fetchCheckIns(familyId: string, from: string, to: string):
   return z.object({ checkIns: z.array(CheckIn) }).parse(await res.json()).checkIns;
 }
 
+/** Every Check-in of the Family, for the Season's numbers and the records. */
+export async function fetchAllCheckIns(familyId: string): Promise<CheckIn[]> {
+  const res = await fetch(`${checkInsPath(familyId)}/all`);
+  if (!res.ok) throw new Error(`GET all check-ins failed: ${res.status}`);
+  return z.object({ checkIns: z.array(CheckIn) }).parse(await res.json()).checkIns;
+}
+
 /** Saves a Member's day as this complete state, replacing what was there. */
 export async function saveCheckIn(
   familyId: string,

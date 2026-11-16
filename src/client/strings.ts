@@ -15,6 +15,8 @@ export const de = {
   appName: "Sick-o-Scope",
   appDescription: "Wer war wann krank? Das Familien-Krankheitstagebuch.",
   loading: "Einen Moment …",
+  /** "1 Tag", "5 Tage". */
+  days,
   /** Joins bits of one line, like "🤒 Richtig krank · Infekt #1 · Tag 3". */
   joined: (parts: string[]) => parts.join(" · "),
   noMembers: "Noch keine Familienmitglieder. Leg sie in den Einstellungen an:",
@@ -27,6 +29,7 @@ export const de = {
     label: "Hauptnavigation",
     today: "Heute",
     timeline: "Verlauf",
+    season: "Saison",
     settings: "Einstellungen",
   },
   signIn: {
@@ -123,12 +126,33 @@ export const de = {
     4: "🛋️",
     5: "😵",
   } satisfies Record<Severity, string>,
+  season: {
+    title: "Saison",
+    table: "Die Saison in Zahlen",
+    sickDays: "Krankheitstage",
+    bugs: "Infekte",
+    longestBug: "Längster Infekt",
+    longestHealthyStreak: "Längste Fit-Strähne",
+    worstDay: "Schlimmster Tag",
+    none: "–",
+    records: "Rekorde aller Zeiten",
+    familyHealthy: "🌞 Alle fit am Stück",
+    logging: "📋 Lückenlos eingetragen",
+    memberHealthy: (emoji: string, name: string) => `${emoji} ${name}: fit am Stück`,
+    /** "10 Tage (1.–10. Nov. 2026)" */
+    record: (n: number, range: string) => `${days(n)} (${range})`,
+    noRecords: "Noch keine Rekorde. Die kommen mit den ersten Einträgen.",
+    empty: "In dieser Saison gibt es keine Einträge.",
+  },
+  /** Picking a Season, on Verlauf and Saison. */
+  seasonBar: {
+    label: "Saison",
+    season: (label: string) => `Saison ${label}`,
+    previous: "Vorherige Saison",
+    next: "Nächste Saison",
+  },
   timeline: {
     title: "Verlauf",
-    season: (label: string) => `Saison ${label}`,
-    seasonBar: "Saison",
-    previousSeason: "Vorherige Saison",
-    nextSeason: "Nächste Saison",
     zoom: "Zoom",
     zoomSteps: { day: "Tag", week: "Woche", month: "Monat" },
     legend: "Legende",

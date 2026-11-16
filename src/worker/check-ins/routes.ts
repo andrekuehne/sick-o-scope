@@ -3,7 +3,7 @@ import { CheckInState, FillGapsRequest } from "../../shared/check-ins.ts";
 import { daysBetweenInclusive, isCalendarDate } from "../../shared/dates.ts";
 import type { AppEnv } from "../app-env.ts";
 import { futureDate, invalidDate, isFutureDate, notFound, parseBody } from "../http.ts";
-import { checkInsBetween, deleteCheckIn, fillGaps, membersOfFamily, saveCheckIn } from "./check-ins.ts";
+import { allCheckIns, checkInsBetween, deleteCheckIn, fillGaps, membersOfFamily, saveCheckIn } from "./check-ins.ts";
 
 /** A Season and a bit: enough for any view, small enough to stay cheap. */
 const MAX_RANGE_DAYS = 400;
@@ -20,6 +20,8 @@ checkInRoutes.get("/", async (c) => {
   }
   return c.json({ checkIns: await checkInsBetween(c.env.DB, c.get("familyId"), from, to) });
 });
+
+checkInRoutes.get("/all", async (c) => c.json({ checkIns: await allCheckIns(c.env.DB, c.get("familyId")) }));
 
 checkInRoutes.post("/fill-gaps", async (c) => {
   const body = await parseBody(c, FillGapsRequest);

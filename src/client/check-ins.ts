@@ -1,7 +1,7 @@
 import { onlineManager, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import type { CheckInStateInput, FillGapsRequest, FillGapsResult } from "../shared/check-ins.ts";
-import { deleteCheckIn, fetchCheckIns, fillGaps, saveCheckIn } from "./api.ts";
+import { deleteCheckIn, fetchAllCheckIns, fetchCheckIns, fillGaps, saveCheckIn } from "./api.ts";
 import { useOnline } from "./online.ts";
 
 const checkInsKey = (familyId: string) => ["check-ins", familyId] as const;
@@ -21,6 +21,11 @@ export function useCheckIns(familyId: string, from: string, to: string) {
     queryKey: [...checkInsKey(familyId), from, to],
     queryFn: () => fetchCheckIns(familyId, from, to),
   });
+}
+
+/** All of the Family's Check-ins, by date; refreshed like any other range. */
+export function useAllCheckIns(familyId: string) {
+  return useQuery({ queryKey: [...checkInsKey(familyId), "all"], queryFn: () => fetchAllCheckIns(familyId) });
 }
 
 /** Called after this one write: on success once the refreshed Check-ins are in. */

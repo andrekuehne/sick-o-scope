@@ -17,6 +17,7 @@ const dateTimeFormat = new Intl.DateTimeFormat(t.locale, {
 });
 const monthFormat = new Intl.DateTimeFormat(t.locale, { month: "short", timeZone: "UTC" });
 const monthYearFormat = new Intl.DateTimeFormat(t.locale, { month: "short", year: "numeric", timeZone: "UTC" });
+const dayMonthYearFormat = new Intl.DateTimeFormat(t.locale, { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 
 /** Today's local date, kept current across midnight and when the app comes back to the front. */
 export function useLocalToday(): string {
@@ -54,6 +55,11 @@ export function shortDate(date: string): string {
 /** "12.–14. Nov.", or "28. Okt. – 3. Nov." across months. */
 export function shortDateRange(from: string, to: string): string {
   return shortFormat.formatRange(utcDate(from), utcDate(to));
+}
+
+/** "1.–10. Nov. 2026", for records that can be from any year. */
+export function dateRangeWithYear(from: string, to: string): string {
+  return dayMonthYearFormat.formatRange(utcDate(from), utcDate(to));
 }
 
 /** "Fr., 13. Nov." */

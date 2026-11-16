@@ -277,3 +277,88 @@ it("puts 31 Aug and 1 Sep in different Seasons, each running 1 Sep – 31 Aug", 
   expect(seasonOf("2027-02-28")).toEqual({ label: "2026/27", start: "2026-09-01", end: "2027-08-31" });
   expect(seasonOf("2099-12-31").label).toBe("2099/00");
 });
+
+it("sums up a Season per Member, with Streaks cut at its start and each Bug counted for the Season it started in", () => {
+  const history = createHistory(
+    [member("luna"), member("max"), member("oma", true)],
+    [
+      ...healthyDays(["luna"], "2026-08-25", "2026-09-05"), // 12 days fit, 5 of them in 2026/27
+      sick("luna", "2026-09-06", 3, ["cough"]),
+      sick("luna", "2026-09-07", 4),
+      sick("luna", "2026-09-09", 0, ["runny-nose"]), // the 8th is a Gap: still the first Bug, 4 days long
+      ...healthyDays(["luna"], "2026-09-10", "2026-09-12"),
+      sick("luna", "2026-09-13", 2), // a second Bug
+      sick("max", "2026-08-31", 2), // last Season's Bug, running into this one
+      sick("max", "2026-09-01", 1),
+      ...healthyDays(["max"], "2026-09-02", "2026-09-03"),
+      sick("oma", "2026-03-01", 3), // archived, and nothing in 2026/27
+    ],
+  );
+
+  expect(history.seasonStats(seasonOf("2026-11-15"))).toEqual([
+    { member: member("luna"), sickDays: 4, bugs: 2, longestBug: 4, longestHealthyStreak: 5, worstSeverity: 4 },
+    // Max's Sick day on 1 Sep counts here, but the Bug belongs to 2025/26.
+    { member: member("max"), sickDays: 1, bugs: 0, longestBug: null, longestHealthyStreak: 2, worstSeverity: 1 },
+  ]);
+  expect(history.seasonStats(seasonOf("2026-03-01"))).toEqual([
+    { member: member("luna"), sickDays: 0, bugs: 0, longestBug: null, longestHealthyStreak: 7, worstSeverity: null },
+    { member: member("max"), sickDays: 1, bugs: 1, longestBug: 2, longestHealthyStreak: null, worstSeverity: 2 },
+    { member: member("oma", true), sickDays: 1, bugs: 1, longestBug: 1, longestHealthyStreak: null, worstSeverity: 3 },
+  ]);
+  // Among the best Streaks ever, Luna's Streak across 1 Sep counts whole.
+  expect(history.bestStreaks().members[0]).toEqual({
+    member: member("luna"),
+    healthy: { from: "2026-08-25", to: "2026-09-05", days: 12 },
+  });
+});
+
+it("keeps the best Streaks ever: everyone Healthy, Lückenlos, and each Member's longest Healthy Streak", () => {
+  const history = createHistory(
+    [member("luna"), member("max"), member("oma", true)],
+    [
+      ...healthyDays(["luna"], "2026-11-01", "2026-11-10"),
+      // Max only counts from his first Check-in on the 3rd, so the 1st and 2nd are fully logged too.
+      ...healthyDays(["max"], "2026-11-03", "2026-11-04"),
+      sick("max", "2026-11-05", 1), // breaks everyone-Healthy, but not Lückenlos
+      ...healthyDays(["max"], "2026-11-06", "2026-11-14"),
+      // Luna's Gap on the 11th ends both Family Streaks.
+      ...healthyDays(["luna"], "2026-11-12", "2026-11-15"),
+      // Today, the 15th, is only half logged (Max is missing): it doesn't add to anything yet.
+      // Archived Oma's long Streak is hers, but she doesn't count for the Family's.
+      ...healthyDays(["oma"], "2026-10-01", "2026-10-20"),
+    ],
+  );
+
+  expect(history.bestStreaks()).toEqual({
+    familyHealthy: { from: "2026-11-06", to: "2026-11-10", days: 5 },
+    logging: { from: "2026-11-01", to: "2026-11-10", days: 10 },
+    members: [
+      { member: member("luna"), healthy: { from: "2026-11-01", to: "2026-11-10", days: 10 } },
+      { member: member("max"), healthy: { from: "2026-11-06", to: "2026-11-14", days: 9 } },
+      { member: member("oma", true), healthy: { from: "2026-10-01", to: "2026-10-20", days: 20 } },
+    ],
+  });
+});
+
+it("has no best Streaks before anything was logged", () => {
+  expect(createHistory([member("luna")], []).bestStreaks()).toEqual({ familyHealthy: null, logging: null, members: [] });
+});
+
+it("counts the Logging Streak up to yesterday while today is still being logged, and with today once it's complete", () => {
+  const members = [member("luna"), member("max")];
+  const logged = [
+    sick("max", "2026-11-12", 2), // Sick days count as logged too (and win over the Healthy one below)
+    ...healthyDays(["luna", "max"], "2026-11-10", "2026-11-14"),
+    healthy("luna", "2026-11-15"), // today: Max still missing
+  ].filter((c, i, all) => all.findIndex((o) => o.memberId === c.memberId && o.date === c.date) === i);
+
+  expect(createHistory(members, logged).loggingStreak("2026-11-15")).toEqual({ from: "2026-11-10", to: "2026-11-14", days: 5 });
+  expect(createHistory(members, [...logged, healthy("max", "2026-11-15")]).loggingStreak("2026-11-15")).toEqual({
+    from: "2026-11-10",
+    to: "2026-11-15",
+    days: 6,
+  });
+  // A Gap yesterday: nothing to count, even if today is complete.
+  const gapYesterday = logged.filter((c) => !(c.memberId === "luna" && c.date === "2026-11-14"));
+  expect(createHistory(members, gapYesterday).loggingStreak("2026-11-15")).toBeNull();
+});

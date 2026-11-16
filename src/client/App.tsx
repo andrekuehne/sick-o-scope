@@ -6,6 +6,7 @@ import { forgetOfflineData } from "./offline-data.ts";
 import { useOnline } from "./online.ts";
 import { SettingsScreen } from "./screens/Settings.tsx";
 import { SignInScreen } from "./screens/SignIn.tsx";
+import { SeasonScreen } from "./screens/Season.tsx";
 import { TimelineScreen } from "./screens/Timeline.tsx";
 import { TodayScreen } from "./screens/Today.tsx";
 import { t } from "./strings.ts";
@@ -63,6 +64,7 @@ function SignedInApp() {
       <Routes>
         <Route index element={<TodayScreen me={me.data} />} />
         <Route path="verlauf" element={<TimelineScreen me={me.data} />} />
+        <Route path="saison" element={<SeasonScreen me={me.data} />} />
         <Route path="einstellungen" element={<SettingsScreen me={me.data} />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
@@ -98,6 +100,7 @@ function Frame({ nav = false, children }: { nav?: boolean; children: React.React
         <nav className="app-nav" aria-label={t.nav.label}>
           <NavItem to="/" icon="📋" label={t.nav.today} />
           <NavItem to="/verlauf" icon="📈" label={t.nav.timeline} />
+          <NavItem to="/saison" icon="🏆" label={t.nav.season} />
           <NavItem to="/einstellungen" icon="⚙️" label={t.nav.settings} />
         </nav>
       )}

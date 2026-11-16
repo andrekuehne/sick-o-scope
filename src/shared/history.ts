@@ -20,8 +20,21 @@ export type FamilyDay = {
   total: number;
 };
 
-/** A Family Streak: consecutive days on which everyone in the Family was Healthy. */
-export type FamilyStreak = { from: string; to: string; days: number };
+/** A Streak's first and last day, and its length: a Member's, or everyone-Healthy for the Family. */
+export type Streak = { from: string; to: string; days: number };
+
+/**
+ * One Member's Season: their Sick days in it, the Bugs that started in it (and the longest's
+ * length), their longest Healthy Streak inside it, and their worst day. null where there's none.
+ */
+export type SeasonStats = {
+  member: Member;
+  sickDays: number;
+  bugs: number;
+  longestBug: number | null;
+  longestHealthyStreak: number | null;
+  worstSeverity: Severity | null;
+};
 
 /**
  * A Bug: one illness of one Member (GLOSSARY.md), from its first to its last Sick day, Gaps in
@@ -40,6 +53,17 @@ export type Bug = {
 
 /** The Bug a Sick day belongs to, and which of its days it is ("Infekt #3 · Tag 4"). */
 export type BugDay = { bug: Bug; day: number };
+
+/**
+ * The longest Streaks ever (the earliest one when tied): everyone Healthy, the Logging Streak
+ * ("Lückenlos"), and each Member's own longest Healthy Streak. null where there was none.
+ * The UI calls them "Rekorde"; in the glossary a record is a Check-in, hence the name here.
+ */
+export type BestStreaks = {
+  familyHealthy: Streak | null;
+  logging: Streak | null;
+  members: { member: Member; healthy: Streak | null }[];
+};
 
 /**
  * One-tap Check-ins built from the Member's previous day: Wie gestern copies it, and Gleich,
@@ -74,6 +98,19 @@ export type History = {
    * Member's previous Check-in, skipping Gaps, was Sick.
    */
   continuesBug(memberId: string, date: string): boolean;
+  /** Each Member with Check-ins in the Season, in the Members' order. */
+  seasonStats(season: Season): SeasonStats[];
+  /**
+   * The best Streaks ever. A day that isn't fully logged (like today, while it's still being
+   * logged) belongs to neither of the Family's. Like the Family Streak, the Logging Streak only
+   * counts active Members, each from their first Check-in on.
+   */
+  bestStreaks(): BestStreaks;
+  /**
+   * The Logging Streak as of `date`: up to the day before while `date` is still being logged,
+   * up to `date` once it's complete; null when the day before wasn't fully logged either.
+   */
+  loggingStreak(date: string): Streak | null;
   /** The complete state the shortcut would save on `date`; null when it makes no sense there. */
   shortcut(shortcut: Shortcut, memberId: string, date: string): CheckInState | null;
   /**
@@ -81,7 +118,7 @@ export type History = {
    * being logged (Gaps, but nobody Sick), the current Streak runs through the day before.
    * Archived Members don't count, and a Member only counts from their first Check-in on.
    */
-  familyStreaks(date: string): { current: FamilyStreak | null; previous: FamilyStreak | null };
+  familyStreaks(date: string): { current: Streak | null; previous: Streak | null };
   /** The Gaps from each Member's last Check-in before `today` up to yesterday, if they began at most 14 days back. */
   gapProposals(today: string): GapProposal[];
 };
@@ -114,16 +151,43 @@ export function createHistory(members: Member[], checkIns: CheckIn[]): History {
     };
   }
 
-  const bugsByMember = new Map<string, Bug[]>();
+  const byMember = new Map<string, { checkIns: CheckIn[]; bugs: Bug[] }>();
 
-  function bugs(memberId: string): Bug[] {
-    let found = bugsByMember.get(memberId);
+  /** The Member's Check-ins in date order, and their Bugs, worked out once. */
+  function ofMember(memberId: string) {
+    let found = byMember.get(memberId);
     if (!found) {
-      const own = checkIns.filter((c) => c.memberId === memberId).sort((a, b) => (a.date < b.date ? -1 : 1));
-      found = bugsOf(own);
-      bugsByMember.set(memberId, found);
+      const sorted = checkIns.filter((c) => c.memberId === memberId).sort((a, b) => (a.date < b.date ? -1 : 1));
+      found = { checkIns: sorted, bugs: bugsOf(sorted) };
+      byMember.set(memberId, found);
     }
     return found;
+  }
+
+  function bugs(memberId: string): Bug[] {
+    return ofMember(memberId).bugs;
+  }
+
+  function seasonStats(season: Season): SeasonStats[] {
+    return members.flatMap((member) => {
+      const { checkIns: all, bugs: memberBugs } = ofMember(member.id);
+      const inSeason = all.filter((c) => season.start <= c.date && c.date <= season.end);
+      if (inSeason.length === 0) return [];
+      const sick = inSeason.flatMap((c) => (c.status === "sick" ? [c] : []));
+      const started = memberBugs.filter((b) => b.season === season.label);
+      // Only this Season's days, so a Streak running into it counts from 1 Sep.
+      const healthyStreaks = streaksOf(inSeason.filter((c) => c.status === "healthy").map((c) => c.date));
+      return [
+        {
+          member,
+          sickDays: sick.length,
+          bugs: started.length,
+          longestBug: largest(started.map((b) => b.length)),
+          longestHealthyStreak: largest(healthyStreaks.map((streak) => streak.days)),
+          worstSeverity: largest(sick.map((c) => c.severity)),
+        },
+      ];
+    });
   }
 
   function bugOn(memberId: string, date: string): BugDay | null {
@@ -154,17 +218,52 @@ export function createHistory(members: Member[], checkIns: CheckIn[]): History {
    * (someone was Sick, or nobody counts yet).
    */
   function familyDay(date: string): "healthy" | "pending" | "not-healthy" {
-    const counted = active.filter((m) => {
-      const first = firstCheckIn.get(m.id);
-      return first !== undefined && first <= date;
-    });
+    const counted = countedOn(date);
     if (counted.length === 0) return "not-healthy";
     const kinds = counted.map((m) => statusOf(m.id, date).kind);
     if (kinds.includes("sick")) return "not-healthy";
     return kinds.includes("gap") ? "pending" : "healthy";
   }
 
-  function familyStreakEndingOn(to: string): FamilyStreak | null {
+  /** The Members who count for the Family on `date`: active ones, from their first Check-in on. */
+  function countedOn(date: string): Member[] {
+    return active.filter((m) => {
+      const first = firstCheckIn.get(m.id);
+      return first !== undefined && first <= date;
+    });
+  }
+
+  /** Whether every Member who counts on `date` has a Check-in then (a day of the Logging Streak). */
+  function fullyLogged(date: string): boolean {
+    const counted = countedOn(date);
+    return counted.length > 0 && counted.every((m) => statusOf(m.id, date).kind !== "gap");
+  }
+
+  function bestStreaks(): BestStreaks {
+    const memberBests = members.flatMap((member) => {
+      const memberCheckIns = ofMember(member.id).checkIns;
+      if (memberCheckIns.length === 0) return [];
+      const healthyDates = memberCheckIns.filter((c) => c.status === "healthy").map((c) => c.date);
+      return [{ member, healthy: longest(streaksOf(healthyDates)) }];
+    });
+    const countedDates = checkIns.filter((c) => active.some((m) => m.id === c.memberId)).map((c) => c.date);
+    if (earliest === null || countedDates.length === 0) return { familyHealthy: null, logging: null, members: memberBests };
+    const dates = datesBetween(earliest, countedDates.reduce((a, b) => (a > b ? a : b)));
+    return {
+      familyHealthy: longest(streaksOf(dates.filter((date) => familyDay(date) === "healthy"))),
+      logging: longest(streaksOf(dates.filter(fullyLogged))),
+      members: memberBests,
+    };
+  }
+
+  function loggingStreak(date: string): Streak | null {
+    const to = fullyLogged(date) ? date : addDays(date, -1);
+    if (!fullyLogged(to)) return null;
+    const from = streakStart(to, fullyLogged);
+    return { from, to, days: daysBetweenInclusive(from, to) };
+  }
+
+  function familyStreakEndingOn(to: string): Streak | null {
     if (familyDay(to) !== "healthy") return null;
     const from = streakStart(to, (day) => familyDay(day) === "healthy");
     return { from, to, days: daysBetweenInclusive(from, to) };
@@ -200,7 +299,7 @@ export function createHistory(members: Member[], checkIns: CheckIn[]): History {
     return last;
   }
 
-  return { statusOf, day, bugs, bugOn, continuesBug, shortcut, familyStreaks, gapProposals };
+  return { statusOf, day, bugs, bugOn, continuesBug, seasonStats, bestStreaks, loggingStreak, shortcut, familyStreaks, gapProposals };
 }
 
 /**
@@ -256,6 +355,36 @@ function withoutNote(checkIn: CheckIn): CheckInState {
   return { status: "sick", severity: checkIn.severity, symptoms: [...checkIn.symptoms], note: null, newBug: false };
 }
 
+
+/** The runs of consecutive days among `dates` (in order, each at most once). */
+function streaksOf(dates: string[]): Streak[] {
+  const streaks: Streak[] = [];
+  for (const date of dates) {
+    const last = streaks.at(-1);
+    if (last && addDays(last.to, 1) === date) {
+      last.to = date;
+      last.days += 1;
+    } else {
+      streaks.push({ from: date, to: date, days: 1 });
+    }
+  }
+  return streaks;
+}
+
+/** The longest of the Streaks, the earliest one when tied; null when there are none. */
+function longest(streaks: Streak[]): Streak | null {
+  return biggest(streaks, (streak) => streak.days);
+}
+
+/** The largest of the numbers; null when there are none. */
+function largest<T extends number>(values: T[]): T | null {
+  return biggest(values, (value) => value);
+}
+
+/** The item with the biggest size, the first one when tied; null when there are none. */
+function biggest<T>(items: T[], size: (item: T) => number): T | null {
+  return items.reduce<T | null>((best, item) => (best === null || size(item) > size(best) ? item : best), null);
+}
 
 /** The first day of the Streak ending on `to`, given which days belong to it. */
 function streakStart(to: string, belongs: (date: string) => boolean): string {
