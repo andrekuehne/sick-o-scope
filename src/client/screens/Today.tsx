@@ -1,12 +1,12 @@
 import { useState } from "react";
 import { useSearchParams } from "react-router";
 import type { Me } from "../../shared/auth.ts";
-import { addDays, isCalendarDate } from "../../shared/dates.ts";
+import { addDays, daysBetweenInclusive, isCalendarDate } from "../../shared/dates.ts";
 import type { CheckIn, CheckInState } from "../../shared/check-ins.ts";
-import { createHistory, type DayStatus, type History, missedDays, type Shortcut } from "../../shared/history.ts";
+import { type BugDay, createHistory, type DayStatus, type History, missedDays, seasonOf, type Shortcut } from "../../shared/history.ts";
 import type { Member } from "../../shared/members.ts";
 import { inCatalogOrder, symptom } from "../../shared/symptoms.ts";
-import { useCheckIns, useCheckInWrites } from "../check-ins.ts";
+import { BUG_LOOKBACK_DAYS, MAX_RANGE_DAYS, useCheckIns, useCheckInWrites } from "../check-ins.ts";
 import { CheckInSheet } from "../components/CheckInSheet.tsx";
 import { GapFillCard } from "../components/GapFillCard.tsx";
 import { MemberAvatar } from "../components/MemberAvatar.tsx";
@@ -112,7 +112,7 @@ export function TodayScreen({ me }: { me: Me }) {
                 status={checkIns.isPending ? null : status}
                 isToday={date === today}
                 yesterday={history.statusOf(member.id, addDays(date, -1))}
-                sickDay={status.kind === "sick" ? (history.memberStreak(member.id, date)?.days ?? null) : null}
+                bugDay={history.bugOn(member.id, date)}
                 shortcuts={status.kind === "gap" ? shortcutsAfterSickDay(history, member.id, date) : []}
                 busy={writes.busy}
                 onHealthy={() => writes.save({ date, memberId: member.id, state: { status: "healthy" } })}
@@ -133,6 +133,7 @@ export function TodayScreen({ me }: { me: Me }) {
           ])}
           checkIn={checkIns.data?.find((c) => c.memberId === step.member.id && c.date === step.date) ?? null}
           startAs={step.startAs}
+          continuesBug={history.continuesBug(step.member.id, step.date)}
           busy={writes.busy}
           onSave={(state, done) =>
             writes.save({ date: step.date, memberId: step.member.id, state }, { ...done, onSuccess: nextStep })
@@ -155,10 +156,18 @@ function shortcutsAfterSickDay(history: History, memberId: string, date: string)
   });
 }
 
-/** Recent days share one range ending today, so moving between them needs no refetch. */
+/**
+ * Recent days share one range ending today, so moving between them needs no refetch. It also
+ * covers the date's whole Season (and a little before), for its Bugs' numbers; when that's
+ * more than one request can hold, the range ends with that Season instead of today.
+ */
 function historyRange(date: string, today: string): { from: string; to: string } {
-  const to = date > addDays(today, -RECENT_DAYS) ? today : date;
-  return { from: addDays(to, -(HISTORY_DAYS - 1)), to };
+  const season = seasonOf(date);
+  const seasonFrom = addDays(season.start, -BUG_LOOKBACK_DAYS);
+  let to = date > addDays(today, -RECENT_DAYS) ? today : date;
+  if (daysBetweenInclusive(seasonFrom, to) > MAX_RANGE_DAYS) to = season.end < today ? season.end : today;
+  const streaksFrom = addDays(to, -(HISTORY_DAYS - 1));
+  return { from: streaksFrom < seasonFrom ? streaksFrom : seasonFrom, to };
 }
 
 /** "Alle fit seit 3. Nov. (13 Tage) · Letzte Fit-Strähne: 9 Tage", as far as there is any. */
@@ -176,7 +185,7 @@ function MemberDayCard({
   status,
   isToday,
   yesterday,
-  sickDay,
+  bugDay,
   shortcuts,
   busy,
   onHealthy,
@@ -190,8 +199,8 @@ function MemberDayCard({
   isToday: boolean;
   /** The day before the selected date. */
   yesterday: DayStatus;
-  /** "Tag N" of the current Sick Streak. */
-  sickDay: number | null;
+  /** The Bug a Sick day belongs to ("Infekt #3 · Tag 4"); null on other days. */
+  bugDay: BugDay | null;
   shortcuts: ShortcutOffer[];
   busy: boolean;
   onHealthy: () => void;
@@ -217,7 +226,7 @@ function MemberDayCard({
       <div className="day-card-main">
         <span className="member-name">{member.name}</span>
         <span className="day-card-status">
-          {status ? t.joined([statusText(status), ...(sickDay !== null ? [t.today.sickDay(sickDay)] : [])]) : t.loading}
+          {status ? t.joined([statusText(status), ...(bugDay ? [t.today.bugDay(bugDay.bug.number, bugDay.day)] : [])]) : t.loading}
         </span>
         {shortcuts.length > 0 && yesterday.kind === "sick" && (
           <span className="day-card-status">{t.today.previousDaySick(isToday, t.severityIcon[yesterday.severity], t.severity[yesterday.severity])}</span>

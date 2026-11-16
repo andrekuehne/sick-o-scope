@@ -5,7 +5,7 @@ import { addDays, datesBetween, isMonday } from "../../shared/dates.ts";
 import { createHistory, type DayStatus, type History, seasonOf } from "../../shared/history.ts";
 import type { Member } from "../../shared/members.ts";
 import { inCatalogOrder, symptom } from "../../shared/symptoms.ts";
-import { useCheckIns, useCheckInWrites } from "../check-ins.ts";
+import { BUG_LOOKBACK_DAYS, useCheckIns, useCheckInWrites } from "../check-ins.ts";
 import { CheckInSheet } from "../components/CheckInSheet.tsx";
 import { MemberAvatar } from "../components/MemberAvatar.tsx";
 import { NoMembersNotice } from "../components/NoMembersNotice.tsx";
@@ -54,13 +54,15 @@ export function TimelineScreen({ me }: { me: Me }) {
   const [zoom, setZoom] = useState<ZoomStep>("week");
   const pxPerDay = ZOOM_STEPS[zoom];
 
-  // The whole Season in one request.
-  const checkIns = useCheckIns(me.family.id, season.start, to);
+  // The whole Season in one request, and the days just before it for a Bug running into it.
+  const checkIns = useCheckIns(me.family.id, addDays(season.start, -BUG_LOOKBACK_DAYS), to);
   const writes = useCheckInWrites(me.family.id);
   const history = useMemo(() => createHistory(me.members, checkIns.data ?? []), [me.members, checkIns.data]);
   const dates = useMemo(() => datesBetween(season.start, to), [season.start, to]);
   // Archived Members only for the days they have Check-ins.
-  const lanes = me.members.filter((m) => !m.archived || checkIns.data?.some((c) => c.memberId === m.id));
+  const lanes = me.members.filter(
+    (m) => !m.archived || checkIns.data?.some((c) => c.memberId === m.id && c.date >= season.start),
+  );
   const [editing, setEditing] = useState<{ member: Member; date: string } | null>(null);
 
   const scroller = useRef<HTMLDivElement>(null);
@@ -180,6 +182,7 @@ export function TimelineScreen({ me }: { me: Me }) {
           title={t.sheet.title(editing.member.name, dayLabel(editing.date, today))}
           checkIn={checkIns.data?.find((c) => c.memberId === editing.member.id && c.date === editing.date) ?? null}
           startAs="healthy"
+          continuesBug={history.continuesBug(editing.member.id, editing.date)}
           busy={writes.busy}
           onSave={(state, done) => writes.save({ date: editing.date, memberId: editing.member.id, state }, done)}
           onDelete={(done) => writes.remove({ date: editing.date, memberId: editing.member.id }, done)}

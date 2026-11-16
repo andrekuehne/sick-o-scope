@@ -9,6 +9,7 @@ type CheckInRow = {
   date: string;
   status: "healthy" | "sick";
   severity: number | null;
+  new_bug: 0 | 1;
   note: string | null;
   updated_by_name: string | null;
   updated_at: string;
@@ -16,7 +17,7 @@ type CheckInRow = {
 };
 
 const SELECT_CHECK_INS = `
-  SELECT c.member_id, c.date, c.status, c.severity, c.note, c.updated_at, u.display_name AS updated_by_name,
+  SELECT c.member_id, c.date, c.status, c.severity, c.new_bug, c.note, c.updated_at, u.display_name AS updated_by_name,
          (SELECT json_group_array(symptom_key)
             FROM (SELECT symptom_key FROM check_in_symptoms WHERE check_in_id = c.id ORDER BY symptom_key)) AS symptoms
   FROM check_ins c LEFT JOIN users u ON u.id = c.updated_by`;
@@ -29,6 +30,7 @@ function toCheckIn(row: CheckInRow): CheckIn {
     status: "sick",
     severity: row.severity as Severity,
     symptoms: JSON.parse(row.symptoms) as SymptomKey[],
+    newBug: row.new_bug === 1,
   };
 }
 
@@ -89,6 +91,7 @@ function rowsAsJson(writes: (DayWrite & { id: string })[], { familyId, userId, n
         date,
         status: state.status,
         severity: state.status === "sick" ? state.severity : null,
+        newBug: state.status === "sick" && state.newBug ? 1 : 0,
         note: state.note,
         updatedBy: userId,
         at,
@@ -104,9 +107,9 @@ function rowsAsJson(writes: (DayWrite & { id: string })[], { familyId, userId, n
 // so rows travel as one JSON parameter and are unpacked with json_each: a fixed handful of
 // statements however many days and Symptoms. (WHERE true lets SQLite parse the ON CONFLICT.)
 const INSERT_CHECK_INS_FROM_JSON = `INSERT INTO check_ins
-  (id, family_id, member_id, date, status, severity, note, updated_by, created_at, updated_at)
+  (id, family_id, member_id, date, status, severity, new_bug, note, updated_by, created_at, updated_at)
   SELECT j.value ->> 'id', j.value ->> 'familyId', j.value ->> 'memberId', j.value ->> 'date',
-         j.value ->> 'status', j.value ->> 'severity', j.value ->> 'note', j.value ->> 'updatedBy',
+         j.value ->> 'status', j.value ->> 'severity', j.value ->> 'newBug', j.value ->> 'note', j.value ->> 'updatedBy',
          j.value ->> 'at', j.value ->> 'at'
   FROM json_each(?) j WHERE true`;
 
@@ -128,7 +131,7 @@ export async function saveCheckIn(db: D1Database, write: DayWrite & Context): Pr
     db
       .prepare(
         `${INSERT_CHECK_INS_FROM_JSON} ON CONFLICT (member_id, date) DO UPDATE SET
-           status = excluded.status, severity = excluded.severity, note = excluded.note,
+           status = excluded.status, severity = excluded.severity, new_bug = excluded.new_bug, note = excluded.note,
            updated_by = excluded.updated_by, updated_at = excluded.updated_at`,
       )
       .bind(rows.checkIns),

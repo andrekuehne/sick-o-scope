@@ -96,15 +96,47 @@ test("follows an illness day by day: Besser lowers the Severity and keeps the Sy
   await sheet.getByRole("button", { name: "Fieber" }).click();
   await sheet.getByRole("button", { name: /Richtig krank/ }).click();
   await sheet.getByRole("button", { name: "Speichern" }).click();
-  await expect(luna).toContainText("Tag 1");
+  await expect(luna).toContainText("Infekt #1 · Tag 1");
 
   // Today: one tap.
   await bar.getByRole("button", { name: "Nächster Tag" }).click();
   await expect(luna).toContainText("Gestern: 🤒 Richtig krank");
   await page.getByRole("button", { name: "Luna: Besser" }).click();
   await expect(luna).toContainText("Angeschlagen");
-  await expect(luna).toContainText("Tag 2");
+  await expect(luna).toContainText("Infekt #1 · Tag 2");
   await expect(luna.getByRole("img", { name: "Husten" })).toBeVisible();
   await expect(luna.getByRole("img", { name: "Fieber" })).toBeVisible();
   await expect(luna.getByRole("button", { name: "Luna: Besser" })).toHaveCount(0); // today is logged now
+});
+
+test("tells a new Bug from the old one: Neuer Infekt starts Infekt #2", async ({ page }) => {
+  await signedInWithMembers(page, ["Luna"]);
+  const luna = page.getByRole("listitem", { name: "Luna" });
+  const bar = page.getByRole("navigation", { name: "Datum" });
+  const sheet = page.getByRole("dialog", { name: /Luna/ });
+
+  // Yesterday: a cold. Nothing came before it, so there's nothing to ask.
+  await bar.getByRole("button", { name: "Vorheriger Tag" }).click();
+  await page.getByRole("button", { name: "Luna ist krank" }).click();
+  await expect(sheet.getByRole("button", { name: /Neuer Infekt/ })).toHaveCount(0);
+  await sheet.getByRole("button", { name: "Schnupfen" }).click();
+  await sheet.getByRole("button", { name: /Naja/ }).click();
+  await sheet.getByRole("button", { name: "Speichern" }).click();
+  await expect(luna).toContainText("Infekt #1 · Tag 1");
+
+  // Today: a stomach bug on top. Gleicher Infekt is the default, Neuer Infekt says otherwise.
+  await bar.getByRole("button", { name: "Nächster Tag" }).click();
+  await page.getByRole("button", { name: "Luna ist krank" }).click();
+  await expect(sheet.getByRole("button", { name: /Gleicher Infekt/ })).toHaveAttribute("aria-pressed", "true");
+  await sheet.getByRole("button", { name: /Neuer Infekt/ }).click();
+  await sheet.getByRole("button", { name: "Erbrechen" }).click();
+  await sheet.getByRole("button", { name: /Richtig krank/ }).click();
+  await sheet.getByRole("button", { name: "Speichern" }).click();
+  await expect(luna).toContainText("Infekt #2 · Tag 1");
+
+  // Saved, not just shown.
+  await page.reload();
+  await expect(luna).toContainText("Infekt #2 · Tag 1");
+  await page.getByRole("button", { name: "Eintrag von Luna bearbeiten" }).click();
+  await expect(sheet.getByRole("button", { name: /Neuer Infekt/ })).toHaveAttribute("aria-pressed", "true");
 });

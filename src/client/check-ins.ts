@@ -6,6 +6,15 @@ import { useOnline } from "./online.ts";
 
 const checkInsKey = (familyId: string) => ["check-ins", familyId] as const;
 
+/**
+ * Loaded on top of a Season, before its start: a Bug can run into the Season from the last
+ * one, and whether a day continues a Bug depends on the Check-ins before it.
+ */
+export const BUG_LOOKBACK_DAYS = 31;
+
+/** The most days one request can ask for (the Worker's limit). */
+export const MAX_RANGE_DAYS = 400;
+
 /** The Family's Check-ins from `from` to `to`; refetched when the app opens or comes back. */
 export function useCheckIns(familyId: string, from: string, to: string) {
   return useQuery({

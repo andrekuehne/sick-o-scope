@@ -14,11 +14,18 @@ const healthy = (memberId: string, date: string): CheckIn => ({
   updatedBy: "André",
   updatedAt: "2026-11-15T08:00:00.000Z",
 });
-const sick = (memberId: string, date: string, severity: 0 | 1 | 2 | 3 | 4 | 5, symptoms: SymptomKey[] = []): CheckIn => ({
+const sick = (
+  memberId: string,
+  date: string,
+  severity: 0 | 1 | 2 | 3 | 4 | 5,
+  symptoms: SymptomKey[] = [],
+  newBug = false,
+): CheckIn => ({
   ...healthy(memberId, date),
   status: "sick",
   severity,
   symptoms,
+  newBug,
 });
 
 it("tells each Member's status on a day: Healthy, Sick, or a Gap when nothing was logged", () => {
@@ -54,26 +61,71 @@ it("still knows an archived Member's past days", () => {
   expect(history.statusOf("oma", "2026-10-01")).toEqual({ kind: "sick", severity: 4, symptoms: [] });
 });
 
-it("counts a Member's current Streak across a month boundary, and a Gap ends it", () => {
+it("keeps a Bug together over a Gap and ends it with a Healthy day; the next Sick day starts a new one", () => {
   const history = createHistory(
     [member("luna")],
     [
-      sick("luna", "2026-10-27", 2), // before the Gap: not part of the current Streak
-      sick("luna", "2026-10-29", 2),
-      sick("luna", "2026-10-30", 3),
-      sick("luna", "2026-10-31", 4),
-      sick("luna", "2026-11-01", 2),
-      healthy("luna", "2026-11-02"),
-      healthy("luna", "2026-11-03"),
-      sick("luna", "2026-11-04", 1), // only "Naja", but any Sick day breaks a Healthy Streak
-      healthy("luna", "2026-11-05"),
+      sick("luna", "2026-11-02", 3, ["cough"]), // her first Check-in: Bug #1
+      sick("luna", "2026-11-03", 4), // the 4th is a Gap: still the same Bug
+      sick("luna", "2026-11-05", 0, ["runny-nose"]), // Fast gesund belongs to it too
+      healthy("luna", "2026-11-06"),
+      sick("luna", "2026-11-08", 1), // the 7th is a Gap, but the last Check-in was Healthy: Bug #2
     ],
   );
 
-  expect(history.memberStreak("luna", "2026-11-01")).toEqual({ kind: "sick", from: "2026-10-29", days: 4 });
-  expect(history.memberStreak("luna", "2026-11-03")).toEqual({ kind: "healthy", from: "2026-11-02", days: 2 });
-  expect(history.memberStreak("luna", "2026-11-05")).toEqual({ kind: "healthy", from: "2026-11-05", days: 1 });
-  expect(history.memberStreak("luna", "2026-11-06")).toBeNull();
+  expect(history.bugs("luna")).toEqual([
+    { from: "2026-11-02", to: "2026-11-05", number: 1, season: "2026/27", sickDays: 3, length: 4, worstSeverity: 4 },
+    { from: "2026-11-08", to: "2026-11-08", number: 2, season: "2026/27", sickDays: 1, length: 1, worstSeverity: 1 },
+  ]);
+  // "Infekt #1 · Tag 4": calendar days since the Bug started, the Gap included.
+  expect(history.bugOn("luna", "2026-11-05")).toMatchObject({ bug: { number: 1 }, day: 4 });
+  expect(history.bugOn("luna", "2026-11-04")).toBeNull(); // a Gap is no Sick day
+  expect(history.bugOn("luna", "2026-11-06")).toBeNull();
+
+  // Whether a Sick day there would continue a Bug, so Neuer Infekt is worth asking about.
+  expect(history.continuesBug("luna", "2026-11-02")).toBe(false); // nothing before
+  expect(history.continuesBug("luna", "2026-11-05")).toBe(true); // over the Gap on the 4th
+  expect(history.continuesBug("luna", "2026-11-07")).toBe(false); // after Healthy
+});
+
+it("starts a new Bug on a Sick day marked Neuer Infekt, even right after another Sick day", () => {
+  const history = createHistory(
+    [member("max")],
+    [
+      sick("max", "2026-11-10", 1, ["runny-nose"]),
+      sick("max", "2026-11-11", 0, ["runny-nose"]),
+      sick("max", "2026-11-12", 3, ["vomiting"], true), // the stomach bug arrives
+      sick("max", "2026-11-13", 2, ["vomiting"]),
+    ],
+  );
+
+  expect(history.bugs("max").map((b) => [b.from, b.to, b.number])).toEqual([
+    ["2026-11-10", "2026-11-11", 1],
+    ["2026-11-12", "2026-11-13", 2],
+  ]);
+  expect(history.bugOn("max", "2026-11-13")).toMatchObject({ bug: { number: 2 }, day: 2 });
+});
+
+it("numbers Bugs per Season, counting a Bug that runs past 31 Aug for the Season it started in", () => {
+  const history = createHistory(
+    [member("luna")],
+    [
+      sick("luna", "2026-05-04", 2),
+      healthy("luna", "2026-05-05"),
+      sick("luna", "2026-08-30", 2), // 2025/26's second Bug, still going on 1 Sep
+      sick("luna", "2026-08-31", 3),
+      sick("luna", "2026-09-01", 2),
+      healthy("luna", "2026-09-02"),
+      sick("luna", "2026-10-12", 1), // the first Bug that starts in 2026/27
+    ],
+  );
+
+  expect(history.bugs("luna").map((b) => [b.season, b.number, b.from, b.to])).toEqual([
+    ["2025/26", 1, "2026-05-04", "2026-05-04"],
+    ["2025/26", 2, "2026-08-30", "2026-09-01"],
+    ["2026/27", 1, "2026-10-12", "2026-10-12"],
+  ]);
+  expect(history.bugOn("luna", "2026-09-01")).toMatchObject({ bug: { season: "2025/26", number: 2 }, day: 3 });
 });
 
 it("lowers Besser from Naja to Fast gesund and from Fast gesund to Healthy, and caps Schlechter at 5, keeping the Symptoms", () => {
@@ -89,18 +141,19 @@ it("lowers Besser from Naja to Fast gesund and from Fast gesund to Healthy, and 
   const shortcut = history.shortcut;
 
   expect(shortcut("better", "luna", "2026-11-15")).toEqual({ status: "healthy", note: null });
-  expect(shortcut("better", "ben", "2026-11-15")).toEqual({ status: "sick", severity: 0, symptoms: ["cough"], note: null });
-  expect(shortcut("worse", "max", "2026-11-15")).toEqual({ status: "sick", severity: 5, symptoms: ["fever", "cough"], note: null });
-  expect(shortcut("better", "oma", "2026-11-15")).toEqual({ status: "sick", severity: 2, symptoms: ["fever"], note: null });
-  expect(shortcut("worse", "oma", "2026-11-15")).toEqual({ status: "sick", severity: 4, symptoms: ["fever"], note: null });
-  expect(shortcut("same", "oma", "2026-11-15")).toEqual({ status: "sick", severity: 3, symptoms: ["fever"], note: null });
+  expect(shortcut("better", "ben", "2026-11-15")).toEqual({ status: "sick", severity: 0, symptoms: ["cough"], note: null, newBug: false });
+  expect(shortcut("worse", "max", "2026-11-15")).toEqual({ status: "sick", severity: 5, symptoms: ["fever", "cough"], note: null, newBug: false });
+  expect(shortcut("better", "oma", "2026-11-15")).toEqual({ status: "sick", severity: 2, symptoms: ["fever"], note: null, newBug: false });
+  expect(shortcut("worse", "oma", "2026-11-15")).toEqual({ status: "sick", severity: 4, symptoms: ["fever"], note: null, newBug: false });
+  expect(shortcut("same", "oma", "2026-11-15")).toEqual({ status: "sick", severity: 3, symptoms: ["fever"], note: null, newBug: false });
 });
 
 it("offers Wie gestern only after a logged day, without the note, and Gleich/Besser/Schlechter only after a Sick day", () => {
   const history = createHistory(
     [member("luna"), member("max"), member("ben")],
     [
-      { ...sick("luna", "2026-11-14", 3, ["cough"]), note: "Fieber nachts 39,2" },
+      // Marked Neuer Infekt: Wie gestern still continues that Bug instead of starting another.
+      { ...sick("luna", "2026-11-14", 3, ["cough"], true), note: "Fieber nachts 39,2" },
       healthy("max", "2026-11-14"),
       healthy("ben", "2026-11-13"), // then a Gap on the 14th
     ],
@@ -111,6 +164,7 @@ it("offers Wie gestern only after a logged day, without the note, and Gleich/Bes
     severity: 3,
     symptoms: ["cough"],
     note: null,
+    newBug: false,
   });
   expect(history.shortcut("like-yesterday", "max", "2026-11-15")).toEqual({ status: "healthy", note: null });
   expect(history.shortcut("better", "max", "2026-11-15")).toBeNull();
@@ -174,7 +228,7 @@ it("proposes filling the Gaps since a Member's last Check-in before today, but n
     [member("luna"), member("max")],
     [
       healthy("luna", "2026-11-08"), // a Gap on the 9th, in the middle: no proposal for it
-      { ...sick("luna", "2026-11-10", 2, ["cough"]), note: "beim Arzt" },
+      { ...sick("luna", "2026-11-10", 2, ["cough"], true), note: "beim Arzt" },
       healthy("luna", "2026-11-15"), // today's already logged; the missed days still count
       ...healthyDays(["max"], "2026-11-08", "2026-11-14"),
     ],
@@ -185,7 +239,7 @@ it("proposes filling the Gaps since a Member's last Check-in before today, but n
       from: "2026-11-11",
       to: "2026-11-14",
       days: 4,
-      members: [{ member: member("luna"), last: { status: "sick", severity: 2, symptoms: ["cough"], note: null } }],
+      members: [{ member: member("luna"), last: { status: "sick", severity: 2, symptoms: ["cough"], note: null, newBug: false } }],
     },
   ]);
 });
@@ -209,7 +263,7 @@ it("prompts only for Gaps that began at most 14 days back, skips Members with no
       to: "2026-11-14",
       days: 2,
       members: [
-        { member: member("max"), last: { status: "sick", severity: 3, symptoms: [], note: null } },
+        { member: member("max"), last: { status: "sick", severity: 3, symptoms: [], note: null, newBug: false } },
         { member: member("lia"), last: { status: "healthy", note: null } },
       ],
     },

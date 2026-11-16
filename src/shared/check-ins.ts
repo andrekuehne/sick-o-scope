@@ -34,6 +34,11 @@ const SickState = z
       .refine((keys) => new Set(keys).size === keys.length, "each Symptom at most once")
       .default([]),
     note: Note,
+    /**
+     * This day starts a new Bug ("Neuer Infekt") although the previous Check-in was Sick.
+     * Missing means it continues the Bug, which is also what apps from before Bugs send.
+     */
+    newBug: z.boolean().default(false),
   })
   .strict();
 

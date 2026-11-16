@@ -15,7 +15,7 @@ export const de = {
   appName: "Sick-o-Scope",
   appDescription: "Wer war wann krank? Das Familien-Krankheitstagebuch.",
   loading: "Einen Moment …",
-  /** Joins bits of one line, like "🤒 Richtig krank · Tag 3". */
+  /** Joins bits of one line, like "🤒 Richtig krank · Infekt #1 · Tag 3". */
   joined: (parts: string[]) => parts.join(" · "),
   noMembers: "Noch keine Familienmitglieder. Leg sie in den Einstellungen an:",
   toSettings: "Zu den Einstellungen",
@@ -65,7 +65,8 @@ export const de = {
     /** The Sick day before the selected date: "Gestern" when that's today, else "Am Vortag". */
     previousDaySick: (isToday: boolean, severityIcon: string, severityLabel: string) =>
       `${isToday ? "Gestern" : "Am Vortag"}: ${severityIcon} ${severityLabel}`,
-    sickDay: (n: number) => `Tag ${n}`,
+    /** The Bug a Sick day belongs to: its number in its Season, and the day of it. */
+    bugDay: (n: number, day: number) => `Infekt #${n} · Tag ${day}`,
     shortcut: { better: "Besser", same: "Gleich", worse: "Schlechter" },
     shortcutLabel: (name: string, shortcut: string) => `${name}: ${shortcut}`,
     familyStreak: (since: string, n: number) => `🌞 Alle fit seit ${since} (${days(n)})`,
@@ -93,6 +94,9 @@ export const de = {
     pickSeverity: "Wähl noch aus, wie schlimm es ist.",
     symptoms: "Was ist los?",
     symptomsHint: "Optional: auch ohne Symptome speicherbar.",
+    bug: "Noch der alte Infekt?",
+    sameBug: "Gleicher Infekt",
+    newBug: "Neuer Infekt",
     note: "Notiz",
     notePlaceholder: "z. B. Fieber nachts 39,2",
     save: "Speichern",

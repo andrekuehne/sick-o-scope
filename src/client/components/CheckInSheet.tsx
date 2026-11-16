@@ -10,16 +10,22 @@ const STATUSES = [
   { status: "healthy", emoji: "🙂", label: t.sheet.healthy },
   { status: "sick", emoji: "🤒", label: t.sheet.sick },
 ] as const satisfies readonly { status: CheckIn["status"]; emoji: string; label: string }[];
+const BUG_CHOICES = [
+  { newBug: false, emoji: "🔁", label: t.sheet.sameBug },
+  { newBug: true, emoji: "🆕", label: t.sheet.newBug },
+] as const;
 
 /**
  * The editor for one Member's day, as a bottom sheet: Healthy or Sick, the Symptom Badges,
- * the Severity and a note. Saving replaces the whole day; Delete turns it back into a Gap.
- * Everything is a tap target, and the actions sit at the bottom, within reach of a thumb.
+ * the Severity and a note, and after a Sick day whether this is still the same Bug. Saving
+ * replaces the whole day; Delete turns it back into a Gap. Everything is a tap target, and
+ * the actions sit at the bottom, within reach of a thumb.
  */
 export function CheckInSheet({
   title,
   checkIn,
   startAs,
+  continuesBug,
   busy,
   onSave,
   onDelete,
@@ -31,6 +37,11 @@ export function CheckInSheet({
   checkIn: CheckIn | null;
   /** What a Gap starts as, e.g. Sick when opened from "Krank…". */
   startAs: CheckIn["status"];
+  /**
+   * Whether a Sick day here would continue a Bug (the previous Check-in was Sick), so the
+   * sheet asks Gleicher or Neuer Infekt. Otherwise it leaves the mark as it was.
+   */
+  continuesBug: boolean;
   busy: boolean;
   /** Both take callbacks for when the write is done (and the screen refreshed) or failed. */
   onSave: (state: CheckInState, done: WriteCallbacks) => void;
@@ -47,6 +58,7 @@ export function CheckInSheet({
   // Symptoms and Severity survive a detour to Healthy, in case of a mis-tap.
   const [symptoms, setSymptoms] = useState<SymptomKey[]>(checkIn?.status === "sick" ? checkIn.symptoms : []);
   const [severity, setSeverity] = useState<Severity | null>(checkIn?.status === "sick" ? checkIn.severity : null);
+  const [newBug, setNewBug] = useState(checkIn?.status === "sick" && checkIn.newBug);
   const [note, setNote] = useState(checkIn?.note ?? "");
   const [failed, setFailed] = useState(false);
 
@@ -57,7 +69,7 @@ export function CheckInSheet({
 
   // The same shared schema the API checks, so the sheet can't send what the server refuses.
   const parsed = CheckInState.safeParse(
-    status === "healthy" ? { status, note } : { status, severity: severity ?? undefined, symptoms, note },
+    status === "healthy" ? { status, note } : { status, severity: severity ?? undefined, symptoms, note, newBug },
   );
   const done: WriteCallbacks = { onSuccess: onClose, onError: () => setFailed(true) };
   const toggle = (key: SymptomKey) =>
@@ -98,6 +110,25 @@ export function CheckInSheet({
 
         {status === "sick" && (
           <>
+            {continuesBug && (
+              <fieldset className="field">
+                <legend>{t.sheet.bug}</legend>
+                <div className="segmented">
+                  {BUG_CHOICES.map((option) => (
+                    <button
+                      key={option.label}
+                      type="button"
+                      className="choice status-choice"
+                      aria-pressed={newBug === option.newBug}
+                      onClick={() => setNewBug(option.newBug)}
+                    >
+                      <span aria-hidden="true">{option.emoji}</span> {option.label}
+                    </button>
+                  ))}
+                </div>
+              </fieldset>
+            )}
+
             <fieldset className="field">
               <legend>{t.sheet.severity}</legend>
               <div className="severity-choices">

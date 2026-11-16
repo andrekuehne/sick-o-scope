@@ -54,6 +54,10 @@ _Avoid_: Diagnosis, illness, condition
 The picture that stands for a Symptom.
 _Avoid_: Icon, sticker
 
+**Bug**:
+One illness of one Member: their Sick days from the day it starts to its last Sick day, Gaps in between included (they stay unknown, never Sick). A Bug starts on a Sick day whose previous Check-in, skipping Gaps, wasn't Sick, or on a Sick day marked as a new Bug; a Healthy day always ends it. A Member has at most one Bug at a time, and a Bug always belongs to one Member alone. It counts for the Season it started in. (The German UI says "Infekt".)
+_Avoid_: Illness, infection, episode, Käfer
+
 **Gap**:
 A Member and date with no Check-in. A Gap is unknown, never Healthy.
 _Avoid_: Missing entry, blank, healthy-by-default
@@ -63,6 +67,18 @@ _Avoid_: Missing entry, blank, healthy-by-default
 **Streak**:
 A run of consecutive days with the same status: Healthy or Sick for one Member, or everyone Healthy for the Family. A Gap ends a Streak.
 _Avoid_: Episode, spell, run
+
+**Logging Streak**:
+A run of consecutive days on which every active Member of the Family has a Check-in, whatever its status. It rewards honest logging, not health. (The German UI says "Lückenlos".)
+_Avoid_: Check-in streak, completeness
+
+**Family wave**:
+A time when Bugs of at least two Members overlap or follow closely on each other, with at most 5 days between one Bug's last Sick day and the next one's start. It says when and who, never who passed a Bug to whom. (The German UI says "Welle".)
+_Avoid_: Outbreak, epidemic, infection chain, patient zero
+
+**Award**:
+A playful title a Member earns in a Season from its Check-ins, shown live during the Season and final afterwards. Every Member with Check-ins in a Season earns at least one, and none is framed as losing. (The German UI says "Auszeichnung".)
+_Avoid_: Badge, trophy, achievement, ranking
 
 **Season**:
 The year from 1 September to 31 August, labelled like "2026/27". Every day belongs to exactly one Season.

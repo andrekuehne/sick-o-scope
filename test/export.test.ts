@@ -26,6 +26,12 @@ it("exports exactly the Family's Check-ins as a CSV that spreadsheet apps read c
   });
   await checkIn(a.familyId, a.cookie, joerg.id, "2026-11-14", { status: "healthy", note: "- schon wieder fit" });
   await checkIn(a.familyId, a.cookie, luna.id, "2026-11-13", { status: "healthy" });
+  // Last Season's Bug, still going on 1 Sep, keeps last Season's number; then two new ones.
+  await checkIn(a.familyId, a.cookie, joerg.id, "2026-08-31", { status: "sick", severity: 2 });
+  await checkIn(a.familyId, a.cookie, joerg.id, "2026-09-01", { status: "sick", severity: 1 });
+  await checkIn(a.familyId, a.cookie, joerg.id, "2026-09-03", { status: "sick", severity: 4, newBug: true });
+  await checkIn(a.familyId, a.cookie, joerg.id, "2026-09-04", { status: "healthy" });
+  await checkIn(a.familyId, a.cookie, joerg.id, "2026-10-20", { status: "sick", severity: 0, symptoms: ["runny-nose"] });
   await checkIn(b.familyId, b.cookie, ben.id, "2026-11-14", { status: "sick", severity: 5 });
 
   const res = await api(`/api/families/${a.familyId}/export.csv`, { cookie: a.cookie });
@@ -41,12 +47,18 @@ it("exports exactly the Family's Check-ins as a CSV that spreadsheet apps read c
   expect(csv).toMatch(
     new RegExp(
       [
-        "^Datum;Familienmitglied;Status;Schweregrad;Symptome;Notiz;Geändert von;Geändert am \\(UTC\\)",
-        `2026-11-13;Luna;Fit;;;;André;${at}`,
+        "^Datum;Familienmitglied;Status;Schweregrad;Symptome;Infekt;Notiz;Geändert von;Geändert am \\(UTC\\)",
+        // Each Sick day names its Bug: its Season and number there.
+        `2026-08-31;Jörg;Krank;2;;2025/26 #1;;André;${at}`,
+        `2026-09-01;Jörg;Krank;1;;2025/26 #1;;André;${at}`,
+        `2026-09-03;Jörg;Krank;4;;2026/27 #1;;André;${at}`,
+        `2026-09-04;Jörg;Fit;;;;;André;${at}`,
+        `2026-10-20;Jörg;Krank;0;Schnupfen;2026/27 #2;;André;${at}`,
+        `2026-11-13;Luna;Fit;;;;;André;${at}`,
         // Semicolons, commas (for apps that split on them), quotes and line breaks stay inside one quoted field.
-        `2026-11-14;Luna;Krank;3;"Husten, Fieber";"Fieber 39,2; nachts ""schlimm""\nmorgens besser";André;${at}`,
+        `2026-11-14;Luna;Krank;3;"Husten, Fieber";2026/27 #1;"Fieber 39,2; nachts ""schlimm""\nmorgens besser";André;${at}`,
         // A note starting like a formula stays text.
-        `2026-11-14;Jörg;Fit;;;'- schon wieder fit;André;${at}`,
+        `2026-11-14;Jörg;Fit;;;;'- schon wieder fit;André;${at}`,
         "$",
       ].join("\r\n"),
     ),

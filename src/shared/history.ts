@@ -20,11 +20,26 @@ export type FamilyDay = {
   total: number;
 };
 
-/** A Member's Streak: consecutive days with the same status, up to and including the day asked about. */
-export type MemberStreak = { kind: "healthy" | "sick"; from: string; days: number };
-
 /** A Family Streak: consecutive days on which everyone in the Family was Healthy. */
 export type FamilyStreak = { from: string; to: string; days: number };
+
+/**
+ * A Bug: one illness of one Member (GLOSSARY.md), from its first to its last Sick day, Gaps in
+ * between included. `number` counts the Member's Bugs started in the same Season (its label);
+ * `length` is in calendar days, `sickDays` counts only the logged Sick days.
+ */
+export type Bug = {
+  from: string;
+  to: string;
+  number: number;
+  season: string;
+  sickDays: number;
+  length: number;
+  worstSeverity: Severity;
+};
+
+/** The Bug a Sick day belongs to, and which of its days it is ("Infekt #3 · Tag 4"). */
+export type BugDay = { bug: Bug; day: number };
 
 /**
  * One-tap Check-ins built from the Member's previous day: Wie gestern copies it, and Gleich,
@@ -50,8 +65,15 @@ export type GapProposal = {
 export type History = {
   statusOf(memberId: string, date: string): DayStatus;
   day(date: string): FamilyDay;
-  /** The Member's Streak ending on `date` ("Tag N" when Sick); null on a Gap. */
-  memberStreak(memberId: string, date: string): MemberStreak | null;
+  /** The Member's Bugs, oldest first. */
+  bugs(memberId: string): Bug[];
+  /** The Bug that `date` belongs to; null unless the Member was Sick that day. */
+  bugOn(memberId: string, date: string): BugDay | null;
+  /**
+   * Whether a Sick day on `date` would continue a Bug unless marked Neuer Infekt: the
+   * Member's previous Check-in, skipping Gaps, was Sick.
+   */
+  continuesBug(memberId: string, date: string): boolean;
   /** The complete state the shortcut would save on `date`; null when it makes no sense there. */
   shortcut(shortcut: Shortcut, memberId: string, date: string): CheckInState | null;
   /**
@@ -92,11 +114,26 @@ export function createHistory(members: Member[], checkIns: CheckIn[]): History {
     };
   }
 
-  function memberStreak(memberId: string, date: string): MemberStreak | null {
-    const kind = statusOf(memberId, date).kind;
-    if (kind === "gap") return null;
-    const from = streakStart(date, (day) => statusOf(memberId, day).kind === kind);
-    return { kind, from, days: daysBetweenInclusive(from, date) };
+  const bugsByMember = new Map<string, Bug[]>();
+
+  function bugs(memberId: string): Bug[] {
+    let found = bugsByMember.get(memberId);
+    if (!found) {
+      const own = checkIns.filter((c) => c.memberId === memberId).sort((a, b) => (a.date < b.date ? -1 : 1));
+      found = bugsOf(own);
+      bugsByMember.set(memberId, found);
+    }
+    return found;
+  }
+
+  function bugOn(memberId: string, date: string): BugDay | null {
+    if (statusOf(memberId, date).kind !== "sick") return null;
+    const bug = bugs(memberId).find((b) => b.from <= date && date <= b.to);
+    return bug ? { bug, day: daysBetweenInclusive(bug.from, date) } : null;
+  }
+
+  function continuesBug(memberId: string, date: string): boolean {
+    return lastCheckInBefore(memberId, date)?.status === "sick";
   }
 
   function shortcut(shortcut: Shortcut, memberId: string, date: string): CheckInState | null {
@@ -108,7 +145,8 @@ export function createHistory(members: Member[], checkIns: CheckIn[]): History {
     const severity = Math.min(5, previous.severity + change);
     // Besser from Fast gesund (0) is a Healthy day.
     if (severity < 0) return { status: "healthy", note: null };
-    return { status: "sick", severity: severity as Severity, symptoms: [...previous.symptoms], note: null };
+    // A shortcut follows the same Bug, even from a day that started a new one.
+    return { status: "sick", severity: severity as Severity, symptoms: [...previous.symptoms], note: null, newBug: false };
   }
 
   /**
@@ -162,7 +200,35 @@ export function createHistory(members: Member[], checkIns: CheckIn[]): History {
     return last;
   }
 
-  return { statusOf, day, memberStreak, shortcut, familyStreaks, gapProposals };
+  return { statusOf, day, bugs, bugOn, continuesBug, shortcut, familyStreaks, gapProposals };
+}
+
+/**
+ * One Member's Bugs from their Check-ins in date order. A Sick day starts a Bug when the
+ * previous Check-in (Gaps don't count) wasn't Sick, or when it says so; a Healthy day ends one.
+ */
+function bugsOf(checkIns: CheckIn[]): Bug[] {
+  const found: Bug[] = [];
+  const perSeason = new Map<string, number>();
+  let current: Bug | null = null;
+  for (const c of checkIns) {
+    if (c.status === "healthy") {
+      current = null;
+      continue;
+    }
+    if (!current || c.newBug) {
+      const season = seasonOf(c.date).label;
+      const number = (perSeason.get(season) ?? 0) + 1;
+      perSeason.set(season, number);
+      current = { from: c.date, to: c.date, number, season, sickDays: 0, length: 0, worstSeverity: c.severity };
+      found.push(current);
+    }
+    current.to = c.date;
+    current.sickDays += 1;
+    current.length = daysBetweenInclusive(current.from, c.date);
+    if (c.severity > current.worstSeverity) current.worstSeverity = c.severity;
+  }
+  return found;
 }
 
 /** A Season: 1 September to 31 August, labelled like "2026/27". */
@@ -184,10 +250,10 @@ export function missedDays(proposal: GapProposal): { member: Member; last: Check
   return datesBetween(proposal.from, proposal.to).flatMap((date) => proposal.members.map((m) => ({ ...m, date })));
 }
 
-/** A Check-in's state to copy onto another day: everything but the note. */
+/** A Check-in's state to copy onto another day: everything but the note, continuing its Bug. */
 function withoutNote(checkIn: CheckIn): CheckInState {
   if (checkIn.status === "healthy") return { status: "healthy", note: null };
-  return { status: "sick", severity: checkIn.severity, symptoms: [...checkIn.symptoms], note: null };
+  return { status: "sick", severity: checkIn.severity, symptoms: [...checkIn.symptoms], note: null, newBug: false };
 }
 
 

@@ -67,6 +67,7 @@ it("rejects inconsistent days and impossible dates", async () => {
 
   for (const state of [
     { status: "healthy", severity: 2 }, // Healthy has no Severity
+    { status: "healthy", newBug: true }, // nor a Bug
     { status: "sick" }, // Sick needs one
     { status: "sick", severity: 6 },
     { status: "sick", severity: -1 },
@@ -87,6 +88,23 @@ it("saves a Sick day at Severity 0, Fast gesund", async () => {
   expect(await checkInsBetween(cookie, familyId, today, today)).toMatchObject([
     { status: "sick", severity: 0, symptoms: ["runny-nose"] },
   ]);
+});
+
+it("remembers a Sick day marked Neuer Infekt, and takes a day without the mark as continuing its Bug", async () => {
+  const { cookie, familyId, members } = await familyWith("Luna");
+  const luna = members[0]!.id;
+  // An installed app from before Bugs sends no mark at all.
+  await saveCheckIn(cookie, familyId, yesterday, luna, { status: "sick", severity: 1, symptoms: ["runny-nose"] });
+  await saveCheckIn(cookie, familyId, today, luna, { status: "sick", severity: 3, symptoms: ["vomiting"], newBug: true });
+
+  expect(await checkInsBetween(cookie, familyId, yesterday, today)).toMatchObject([
+    { date: yesterday, newBug: false },
+    { date: today, newBug: true },
+  ]);
+
+  // Saving the day again without the mark takes it away, like any other part of the day.
+  await saveCheckIn(cookie, familyId, today, luna, { status: "sick", severity: 3, symptoms: ["vomiting"] });
+  expect(await checkInsBetween(cookie, familyId, today, today)).toMatchObject([{ newBug: false }]);
 });
 
 it("fills only Gaps: an existing Check-in is never overwritten", async () => {
@@ -156,6 +174,14 @@ it("has a database that refuses inconsistent days even if a bug got past the API
   await expect(insert("2026-11-03", "sick", 6)).rejects.toThrow(/CHECK/);
   await expect(insert("2026-11-04", "sick", 2.5)).rejects.toThrow(/CHECK/);
   await expect(insert("2026-11-31", "healthy", null)).resolves.toBeTruthy(); // the API checks real dates
+  await expect(
+    env.DB.prepare(
+      `INSERT INTO check_ins (id, family_id, member_id, date, status, new_bug, created_at, updated_at)
+       VALUES (?, ?, ?, '2026-11-05', 'healthy', 1, 'x', 'x')`,
+    )
+      .bind(crypto.randomUUID(), familyId, members[0]!.id)
+      .run(),
+  ).rejects.toThrow(/CHECK/); // a Healthy day is never a new Bug
 });
 
 it("answers bad input with 400, never a server error: repeated Symptoms, mixed-up gap fills", async () => {
