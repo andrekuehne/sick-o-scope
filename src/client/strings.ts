@@ -13,11 +13,12 @@ const checkInCount = (n: number) => `${n} ${n === 1 ? "Eintrag" : "Einträge"}`;
 const daysDative = (n: number) => `${n} ${n === 1 ? "Tag" : "Tagen"}`;
 /** "1,5": at most one decimal place. */
 const decimal = (n: number) => n.toLocaleString("de-DE", { maximumFractionDigits: 1 });
-/** Champion names where "<Symptom>-Champion" wouldn't sound right. */
+/** Champion names where "<Symptom>-Champion" wouldn't sound right, or something better fits. */
 const championNames: Partial<Record<SymptomKey, string>> = {
   "stuffy-nose": "Schniefnasen-Champion",
   fatigue: "Müdigkeits-Champion",
   nausea: "Übelkeits-Champion",
+  vomiting: "Kotzmeister",
 };
 
 export const de = {
