@@ -13,6 +13,7 @@ export const SYMPTOM_GROUPS = [
       { key: "phlegm", name: "Schleimbrocken", badge: "🟢" },
       { key: "cough", name: "Husten", badge: "😮‍💨" },
       { key: "sore-throat", name: "Halsweh", badge: "🗣️" },
+      { key: "scratchy-throat", name: "Halskratzen", badge: "🌵" },
       { key: "earache", name: "Ohrenweh", badge: "👂" },
       { key: "itchy-ears", name: "Ohrenjucken", badge: "🪶" },
     ],
