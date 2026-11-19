@@ -108,6 +108,8 @@ a {
 
 .app-nav {
   position: fixed;
+  /* Above anything the screens layer, such as the timeline's wave bands. */
+  z-index: 2;
   inset: auto 0 0 0;
   display: flex;
   height: calc(var(--nav-height) + env(safe-area-inset-bottom));
