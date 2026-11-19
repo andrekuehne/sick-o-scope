@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { signedInWithMembers } from "./helpers.ts";
+import { logDay, signedInWithMembers } from "./helpers.ts";
 
 test("offline, saving is disabled and a banner says so; back online, saving works again", async ({ page, context }) => {
   await signedInWithMembers(page, ["Luna", "Max"]);
@@ -69,4 +69,25 @@ test.describe(() => {
     await expect(page.getByRole("listitem", { name: "Luna" })).toContainText("Noch nichts eingetragen");
     await expect(page.getByText("0 / 1 eingetragen")).toBeVisible();
   });
+});
+
+test("throws away data kept by an older version of the app instead of crashing on its old shape", async ({ page }) => {
+  await signedInWithMembers(page, ["Luna"]);
+  await logDay(page, "Luna", 0, { status: "sick", severity: 2, symptoms: ["cough"] });
+  await page.reload();
+  await expect(page.getByRole("listitem", { name: "Luna" })).toContainText("Angeschlagen");
+  // Kept in this browser, written at most once a second.
+  await page.waitForTimeout(1_100);
+
+  // Make the kept copy one from an older version: another version, and Check-ins from before Medications.
+  await page.evaluate(() => {
+    const kept = JSON.parse(localStorage.getItem("sick-o-scope:data")!);
+    kept.buster = "older";
+    localStorage.setItem("sick-o-scope:data", JSON.stringify(kept).replaceAll(/,"medications":\[[^\]]*\]/g, ""));
+  });
+  await page.reload();
+
+  // The app starts afresh from the server rather than drawing the old copy.
+  await expect(page.getByRole("heading", { name: "Hallo André 👋" })).toBeVisible();
+  await expect(page.getByRole("listitem", { name: "Luna" })).toContainText("Angeschlagen");
 });

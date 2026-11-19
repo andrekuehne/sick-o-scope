@@ -6,6 +6,7 @@
 import { createSyncStoragePersister } from "@tanstack/query-sync-storage-persister";
 import type { QueryClient } from "@tanstack/react-query";
 import type { PersistQueryClientOptions } from "@tanstack/react-query-persist-client";
+import { OFFLINE_DATA_VERSION } from "../shared/offline-data.ts";
 import { ME_KEY } from "./me.ts";
 
 const STORAGE_KEY = "sick-o-scope:data";
@@ -16,8 +17,8 @@ export const KEEP_OFFLINE_MS = 7 * 24 * 60 * 60 * 1000;
 export const offlineDataOptions: Omit<PersistQueryClientOptions, "queryClient"> = {
   persister: createSyncStoragePersister({ storage: window.localStorage, key: STORAGE_KEY }),
   maxAge: KEEP_OFFLINE_MS,
-  // Bump when the shape of cached data changes, so an old copy is thrown away instead of misread.
-  buster: "1",
+  // A copy kept by another version of the app, in another shape, is thrown away instead of misread.
+  buster: OFFLINE_DATA_VERSION,
 };
 
 /**
