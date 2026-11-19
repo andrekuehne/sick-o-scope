@@ -59,6 +59,6 @@ export function symptom(key: SymptomKey): Symptom {
 }
 
 /** The given keys in catalog order, however they were stored or picked. */
-export function inCatalogOrder(keys: readonly SymptomKey[]): SymptomKey[] {
+export function symptomsInCatalogOrder(keys: readonly SymptomKey[]): SymptomKey[] {
   return SYMPTOM_KEYS.filter((key) => keys.includes(key));
 }

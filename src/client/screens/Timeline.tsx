@@ -4,7 +4,7 @@ import type { Severity } from "../../shared/check-ins.ts";
 import { addDays, datesBetween, daysBetweenInclusive, isMonday } from "../../shared/dates.ts";
 import { createHistory, type DayStatus, type FamilyWave, type History, type Season, seasonOf } from "../../shared/history.ts";
 import type { Member } from "../../shared/members.ts";
-import { inCatalogOrder, symptom } from "../../shared/symptoms.ts";
+import { symptom, symptomsInCatalogOrder } from "../../shared/symptoms.ts";
 import { BUG_LOOKBACK_DAYS, useCheckIns, useCheckInWrites } from "../check-ins.ts";
 import { CheckInSheet } from "../components/CheckInSheet.tsx";
 import { SeasonBar } from "../components/SeasonBar.tsx";
@@ -275,7 +275,7 @@ function Lane({
           const status = statusOn(date);
           const colour = colourOf(member, status);
           if (colour === "blank") return null;
-          const symptoms = status.kind === "sick" ? inCatalogOrder(status.symptoms).map(symptom) : [];
+          const symptoms = status.kind === "sick" ? symptomsInCatalogOrder(status.symptoms).map(symptom) : [];
           const meaning = DAY_COLOURS[colour];
           const label = t.timeline.days(
             member.name,

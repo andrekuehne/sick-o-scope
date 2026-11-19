@@ -39,7 +39,7 @@ A Check-in stating the Member felt fine that day. It is an explicit statement, n
 _Avoid_: Severity 0 (as a word for Healthy)
 
 **Sick**:
-A Check-in with a Severity and zero or more Symptoms. Any Check-in that isn't Healthy is Sick, including "Meh" and "almost well" days.
+A Check-in with a Severity, zero or more Symptoms and zero or more Medications. Any Check-in that isn't Healthy is Sick, including "Meh" and "almost well" days.
 _Avoid_: Ill, unwell
 
 **Severity**:
@@ -50,8 +50,12 @@ _Avoid_: Intensity, score
 One complaint from a fixed, compact list (for example runny nose or fever), noted as part of a Sick Check-in.
 _Avoid_: Diagnosis, illness, condition
 
+**Medication**:
+One remedy from a fixed, compact list (for example Ibuprofen or Nasenspray), noted as taken on a Sick Check-in. It records that a Member took it that day, never how much or how often; not ticked means not taken. (The German UI says "Medikament".)
+_Avoid_: Medicine, drug, treatment, Medikation
+
 **Badge**:
-The picture that stands for a Symptom.
+The picture that stands for a Symptom or a Medication.
 _Avoid_: Icon, sticker
 
 **Bug**:

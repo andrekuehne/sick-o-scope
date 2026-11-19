@@ -26,11 +26,12 @@ const sick = (
   severity: 0 | 1 | 2 | 3 | 4 | 5,
   symptoms: SymptomKey[] = [],
   newBug = false,
-): CheckIn => ({
+): Extract<CheckIn, { status: "sick" }> => ({
   ...healthy(memberId, date),
   status: "sick",
   severity,
   symptoms,
+  medications: [],
   newBug,
 });
 
@@ -147,19 +148,19 @@ it("lowers Besser from Naja to Fast gesund and from Fast gesund to Healthy, and 
   const shortcut = history.shortcut;
 
   expect(shortcut("better", "luna", "2026-11-15")).toEqual({ status: "healthy", note: null });
-  expect(shortcut("better", "ben", "2026-11-15")).toEqual({ status: "sick", severity: 0, symptoms: ["cough"], note: null, newBug: false });
-  expect(shortcut("worse", "max", "2026-11-15")).toEqual({ status: "sick", severity: 5, symptoms: ["fever", "cough"], note: null, newBug: false });
-  expect(shortcut("better", "oma", "2026-11-15")).toEqual({ status: "sick", severity: 2, symptoms: ["fever"], note: null, newBug: false });
-  expect(shortcut("worse", "oma", "2026-11-15")).toEqual({ status: "sick", severity: 4, symptoms: ["fever"], note: null, newBug: false });
-  expect(shortcut("same", "oma", "2026-11-15")).toEqual({ status: "sick", severity: 3, symptoms: ["fever"], note: null, newBug: false });
+  expect(shortcut("better", "ben", "2026-11-15")).toEqual({ status: "sick", severity: 0, symptoms: ["cough"], medications: [], note: null, newBug: false });
+  expect(shortcut("worse", "max", "2026-11-15")).toEqual({ status: "sick", severity: 5, symptoms: ["fever", "cough"], medications: [], note: null, newBug: false });
+  expect(shortcut("better", "oma", "2026-11-15")).toEqual({ status: "sick", severity: 2, symptoms: ["fever"], medications: [], note: null, newBug: false });
+  expect(shortcut("worse", "oma", "2026-11-15")).toEqual({ status: "sick", severity: 4, symptoms: ["fever"], medications: [], note: null, newBug: false });
+  expect(shortcut("same", "oma", "2026-11-15")).toEqual({ status: "sick", severity: 3, symptoms: ["fever"], medications: [], note: null, newBug: false });
 });
 
-it("offers Wie gestern only after a logged day, without the note, and Gleich/Besser/Schlechter only after a Sick day", () => {
+it("offers Wie gestern only after a logged day, without the note or Medications, and Gleich/Besser/Schlechter only after a Sick day", () => {
   const history = createHistory(
     [member("luna"), member("max"), member("ben")],
     [
       // Marked Neuer Infekt: Wie gestern still continues that Bug instead of starting another.
-      { ...sick("luna", "2026-11-14", 3, ["cough"], true), note: "Fieber nachts 39,2" },
+      { ...sick("luna", "2026-11-14", 3, ["cough"], true), note: "Fieber nachts 39,2", medications: ["ibuprofen"] },
       healthy("max", "2026-11-14"),
       healthy("ben", "2026-11-13"), // then a Gap on the 14th
     ],
@@ -169,6 +170,7 @@ it("offers Wie gestern only after a logged day, without the note, and Gleich/Bes
     status: "sick",
     severity: 3,
     symptoms: ["cough"],
+    medications: [],
     note: null,
     newBug: false,
   });
@@ -234,7 +236,7 @@ it("proposes filling the Gaps since a Member's last Check-in before today, but n
     [member("luna"), member("max")],
     [
       healthy("luna", "2026-11-08"), // a Gap on the 9th, in the middle: no proposal for it
-      { ...sick("luna", "2026-11-10", 2, ["cough"], true), note: "beim Arzt" },
+      { ...sick("luna", "2026-11-10", 2, ["cough"], true), note: "beim Arzt", medications: ["antibiotics"] },
       healthy("luna", "2026-11-15"), // today's already logged; the missed days still count
       ...healthyDays(["max"], "2026-11-08", "2026-11-14"),
     ],
@@ -245,7 +247,10 @@ it("proposes filling the Gaps since a Member's last Check-in before today, but n
       from: "2026-11-11",
       to: "2026-11-14",
       days: 4,
-      members: [{ member: member("luna"), last: { status: "sick", severity: 2, symptoms: ["cough"], note: null, newBug: false } }],
+      // Medications aren't copied: taking them is worth ticking day by day.
+      members: [
+        { member: member("luna"), last: { status: "sick", severity: 2, symptoms: ["cough"], medications: [], note: null, newBug: false } },
+      ],
     },
   ]);
 });
@@ -269,7 +274,7 @@ it("prompts only for Gaps that began at most 14 days back, skips Members with no
       to: "2026-11-14",
       days: 2,
       members: [
-        { member: member("max"), last: { status: "sick", severity: 3, symptoms: [], note: null, newBug: false } },
+        { member: member("max"), last: { status: "sick", severity: 3, symptoms: [], medications: [], note: null, newBug: false } },
         { member: member("lia"), last: { status: "healthy", note: null } },
       ],
     },

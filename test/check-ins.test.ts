@@ -201,6 +201,42 @@ it("has a database that refuses inconsistent days even if a bug got past the API
   ).rejects.toThrow(/CHECK/); // a Healthy day is never a new Bug
 });
 
+it("saves the Medications taken on a Sick day, and a new save replaces them", async () => {
+  const { cookie, familyId, members } = await familyWith("Luna");
+  const luna = members[0]!.id;
+
+  await saveCheckIn(cookie, familyId, today, luna, { status: "sick", severity: 3, symptoms: ["fever"], medications: ["paracetamol", "nasal-spray"] });
+  expect(await checkInsBetween(cookie, familyId, today, today)).toMatchObject([
+    { status: "sick", symptoms: ["fever"], medications: ["nasal-spray", "paracetamol"] },
+  ]);
+
+  // Left out means none taken, like Symptoms.
+  await saveCheckIn(cookie, familyId, today, luna, { status: "sick", severity: 2, symptoms: ["fever"] });
+  expect(await checkInsBetween(cookie, familyId, today, today)).toMatchObject([{ status: "sick", medications: [] }]);
+
+  await saveCheckIn(cookie, familyId, today, luna, { status: "sick", severity: 2, medications: ["antibiotics"] });
+  await saveCheckIn(cookie, familyId, today, luna, { status: "healthy" });
+  const [day] = await checkInsBetween(cookie, familyId, today, today);
+  expect(day).not.toHaveProperty("medications");
+
+  // Back to Sick: the Healthy save left nothing behind.
+  await saveCheckIn(cookie, familyId, today, luna, { status: "sick", severity: 1 });
+  expect(await checkInsBetween(cookie, familyId, today, today)).toMatchObject([{ medications: [] }]);
+});
+
+it("rejects Medications on a Healthy day, unknown ones, and the same one twice", async () => {
+  const { cookie, familyId, members } = await familyWith("Luna");
+  const luna = members[0]!.id;
+  const fillGaps = (checkIns: object[]) =>
+    api(`/api/families/${familyId}/check-ins/fill-gaps`, { method: "POST", body: { checkIns }, cookie });
+
+  expect((await saveCheckIn(cookie, familyId, today, luna, { status: "healthy", medications: ["ibuprofen"] })).status).toBe(400);
+  expect((await saveCheckIn(cookie, familyId, today, luna, { status: "sick", severity: 2, medications: ["aspirin"] })).status).toBe(400);
+  expect((await saveCheckIn(cookie, familyId, today, luna, { status: "sick", severity: 2, medications: ["ibuprofen", "ibuprofen"] })).status).toBe(400);
+  expect((await fillGaps([{ memberId: luna, date: today, status: "sick", severity: 2, medications: ["aspirin"] }])).status).toBe(400);
+  expect(await checkInsBetween(cookie, familyId, today, today)).toEqual([]);
+});
+
 it("answers bad input with 400, never a server error: repeated Symptoms, mixed-up gap fills", async () => {
   const { cookie, familyId, members } = await familyWith("Luna");
   const luna = members[0]!.id;
@@ -221,7 +257,7 @@ it("fills a long stretch of Gaps for the whole Family in one go", async () => {
   const { cookie, familyId, members } = await familyWith("Luna", "Max", "Oma", "Ben", "Mia", "Tom");
   const days = Array.from({ length: 15 }, (_, i) => addDays(today, -i));
   const checkIns = members.flatMap((m) =>
-    days.map((date) => ({ memberId: m.id, date, status: "sick", severity: 2, symptoms: ["cough", "fever"] })),
+    days.map((date) => ({ memberId: m.id, date, status: "sick", severity: 2, symptoms: ["cough", "fever"], medications: ["cough-syrup"] })),
   );
 
   const res = await api(`/api/families/${familyId}/check-ins/fill-gaps`, { method: "POST", body: { checkIns }, cookie });
@@ -229,5 +265,5 @@ it("fills a long stretch of Gaps for the whole Family in one go", async () => {
   expect((await json<FillGapsResult>(res)).written).toHaveLength(90);
   const saved = await checkInsBetween(cookie, familyId, days.at(-1)!, today);
   expect(saved).toHaveLength(90);
-  expect(saved.every((c) => c.status === "sick" && c.symptoms.join() === "cough,fever")).toBe(true);
+  expect(saved.every((c) => c.status === "sick" && c.symptoms.join() === "cough,fever" && c.medications.join() === "cough-syrup")).toBe(true);
 });

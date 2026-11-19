@@ -5,7 +5,7 @@ import { addDays, daysBetweenInclusive, isCalendarDate } from "../../shared/date
 import type { CheckIn, CheckInState } from "../../shared/check-ins.ts";
 import { type BugDay, createHistory, type DayStatus, type History, missedDays, seasonOf, type Shortcut } from "../../shared/history.ts";
 import type { Member } from "../../shared/members.ts";
-import { inCatalogOrder, symptom } from "../../shared/symptoms.ts";
+import { symptom, symptomsInCatalogOrder } from "../../shared/symptoms.ts";
 import { BUG_LOOKBACK_DAYS, MAX_RANGE_DAYS, useCheckIns, useCheckInWrites } from "../check-ins.ts";
 import { CheckInSheet } from "../components/CheckInSheet.tsx";
 import { GapFillCard } from "../components/GapFillCard.tsx";
@@ -242,7 +242,7 @@ function MemberDayCard({
           <span className="day-card-status">{t.today.dayBefore(isToday, previousDayText(dayBefore))}</span>
           {status?.kind === "sick" && status.symptoms.length > 0 && (
             <span className="day-card-badges">
-              {inCatalogOrder(status.symptoms)
+              {symptomsInCatalogOrder(status.symptoms)
                 .map(symptom)
                 .map(({ key, name, badge }) => (
                   <span key={key} role="img" aria-label={name} title={name}>

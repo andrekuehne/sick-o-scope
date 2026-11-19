@@ -3,6 +3,7 @@
 
 import { z } from "zod";
 import { CalendarDate } from "./dates.ts";
+import { MEDICATION_KEYS } from "./medications.ts";
 import { SYMPTOM_KEYS } from "./symptoms.ts";
 
 /** How bad a Sick day was overall, from 0 (Fast gesund) to 5 (Totalausfall). */
@@ -11,6 +12,9 @@ export type Severity = z.infer<typeof Severity>;
 
 /** A Symptom's stable key from the fixed catalog, e.g. "runny-nose"; anything else is rejected. */
 export const SymptomKey = z.enum(SYMPTOM_KEYS);
+
+/** A Medication's stable key from the fixed catalog, e.g. "ibuprofen"; anything else is rejected. */
+export const MedicationKey = z.enum(MEDICATION_KEYS);
 
 export const NOTE_MAX_LENGTH = 500;
 
@@ -32,6 +36,12 @@ const SickState = z
       .array(SymptomKey)
       .max(20)
       .refine((keys) => new Set(keys).size === keys.length, "each Symptom at most once")
+      .default([]),
+    /** The Medications taken that day; left out means none, like Symptoms. */
+    medications: z
+      .array(MedicationKey)
+      .max(MEDICATION_KEYS.length)
+      .refine((keys) => new Set(keys).size === keys.length, "each Medication at most once")
       .default([]),
     note: Note,
     /**

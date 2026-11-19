@@ -397,8 +397,9 @@ export function createHistory(members: Member[], checkIns: CheckIn[]): History {
     const severity = Math.min(5, previous.severity + change);
     // Besser from Fast gesund (0) is a Healthy day.
     if (severity < 0) return { status: "healthy", note: null };
-    // A shortcut follows the same Bug, even from a day that started a new one.
-    return { status: "sick", severity: severity as Severity, symptoms: [...previous.symptoms], note: null, newBug: false };
+    // A shortcut follows the same Bug, even from a day that started a new one. Medications
+    // aren't copied, as when filling missed days.
+    return { status: "sick", severity: severity as Severity, symptoms: [...previous.symptoms], medications: [], note: null, newBug: false };
   }
 
   /**
@@ -489,7 +490,7 @@ export function createHistory(members: Member[], checkIns: CheckIn[]): History {
       const from = addDays(last.date, 1);
       if (from > to || from < addDays(today, -GAP_FILL_DAYS)) continue;
       const proposal = byFirstMissedDay.get(from) ?? { from, to, days: daysBetweenInclusive(from, to), members: [] };
-      proposal.members.push({ member, last: withoutNote(last) });
+      proposal.members.push({ member, last: stateToCopy(last) });
       byFirstMissedDay.set(from, proposal);
     }
     return [...byFirstMissedDay.values()];
@@ -633,10 +634,13 @@ export function missedDays(proposal: GapProposal): { member: Member; last: Check
   return datesBetween(proposal.from, proposal.to).flatMap((date) => proposal.members.map((m) => ({ ...m, date })));
 }
 
-/** A Check-in's state to copy onto another day: everything but the note, continuing its Bug. */
-function withoutNote(checkIn: CheckIn): CheckInState {
+/**
+ * A Check-in's state to copy onto another day: its status, Severity and Symptoms, continuing its
+ * Bug. Not the note, and not the Medications: whether they were taken is worth asking day by day.
+ */
+function stateToCopy(checkIn: CheckIn): CheckInState {
   if (checkIn.status === "healthy") return { status: "healthy", note: null };
-  return { status: "sick", severity: checkIn.severity, symptoms: [...checkIn.symptoms], note: null, newBug: false };
+  return { status: "sick", severity: checkIn.severity, symptoms: [...checkIn.symptoms], medications: [], note: null, newBug: false };
 }
 
 

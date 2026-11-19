@@ -23,7 +23,7 @@ test("edits a past day from the timeline, and the timeline shows the change", as
   const sheet = page.getByRole("dialog", { name: /Luna/ });
   await sheet.getByRole("button", { name: "Krank", exact: true }).click();
   await sheet.getByRole("button", { name: /Richtig krank/ }).click();
-  await sheet.getByRole("button", { name: "Husten" }).click();
+  await sheet.getByRole("button", { name: "Husten", exact: true }).click();
   await sheet.getByRole("button", { name: "Speichern" }).click();
 
   await expect(sheet).toBeHidden();

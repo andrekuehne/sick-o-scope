@@ -8,10 +8,11 @@
 import type { CheckIn } from "../../shared/check-ins.ts";
 import { createHistory, type History } from "../../shared/history.ts";
 import type { Member } from "../../shared/members.ts";
-import { inCatalogOrder, symptom } from "../../shared/symptoms.ts";
+import { medication, medicationsInCatalogOrder } from "../../shared/medications.ts";
+import { symptom, symptomsInCatalogOrder } from "../../shared/symptoms.ts";
 import type { CheckInWithMemberName } from "../check-ins/check-ins.ts";
 
-const HEADER = ["Datum", "Familienmitglied", "Status", "Schweregrad", "Symptome", "Infekt", "Notiz", "Geändert von", "Geändert am (UTC)"];
+const HEADER = ["Datum", "Familienmitglied", "Status", "Schweregrad", "Symptome", "Medikamente", "Infekt", "Notiz", "Geändert von", "Geändert am (UTC)"];
 
 /**
  * The CSV text, with a byte order mark so Excel reads it as UTF-8. Fields are separated by
@@ -33,11 +34,12 @@ export function checkInsCsv(checkIns: CheckInWithMemberName[], members: Member[]
   return `﻿${[HEADER, ...rows].map((row) => row.map(field).join(";")).join("\r\n")}\r\n`;
 }
 
-/** Status, Severity and Symptoms (German names, in catalog order). */
-function statusFields(checkIn: CheckIn): [string, string, string] {
-  if (checkIn.status === "healthy") return ["Fit", "", ""];
-  const symptoms = inCatalogOrder(checkIn.symptoms).map((key) => symptom(key).name);
-  return ["Krank", String(checkIn.severity), symptoms.join(", ")];
+/** Status, Severity, Symptoms and Medications (German names, in catalog order). */
+function statusFields(checkIn: CheckIn): [string, string, string, string] {
+  if (checkIn.status === "healthy") return ["Fit", "", "", ""];
+  const symptoms = symptomsInCatalogOrder(checkIn.symptoms).map((key) => symptom(key).name);
+  const medications = medicationsInCatalogOrder(checkIn.medications).map((key) => medication(key).name);
+  return ["Krank", String(checkIn.severity), symptoms.join(", "), medications.join(", ")];
 }
 
 /** The Bug a Sick day belongs to, as its Season and number there: "2026/27 #3". */

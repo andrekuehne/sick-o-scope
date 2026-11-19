@@ -51,7 +51,7 @@ test("logs a Sick day with Symptoms and a Severity, and switches between Sick an
   const sheet = page.getByRole("dialog", { name: /Luna/ });
 
   await page.getByRole("button", { name: "Luna ist krank" }).click();
-  await sheet.getByRole("button", { name: "Husten" }).click();
+  await sheet.getByRole("button", { name: "Husten", exact: true }).click();
   await sheet.getByRole("button", { name: "Fieber" }).click();
   await sheet.getByRole("button", { name: /Richtig krank/ }).click();
   await sheet.getByLabel("Notiz").fill("Fieber nachts 39,2");
@@ -66,7 +66,7 @@ test("logs a Sick day with Symptoms and a Severity, and switches between Sick an
   // Saved, not just shown: the sheet reopens with the whole day, and Sick turns Healthy…
   await page.reload();
   await page.getByRole("button", { name: "Eintrag von Luna bearbeiten" }).click();
-  await expect(sheet.getByRole("button", { name: "Husten" })).toHaveAttribute("aria-pressed", "true");
+  await expect(sheet.getByRole("button", { name: "Husten", exact: true })).toHaveAttribute("aria-pressed", "true");
   await expect(sheet.getByRole("button", { name: /Richtig krank/ })).toHaveAttribute("aria-pressed", "true");
   await expect(sheet.getByLabel("Notiz")).toHaveValue("Fieber nachts 39,2");
   await sheet.getByRole("button", { name: "Fit", exact: true }).click();
@@ -82,6 +82,38 @@ test("logs a Sick day with Symptoms and a Severity, and switches between Sick an
   await expect(luna).toContainText("Sofa-Kobold");
 });
 
+test("notes the Medications taken on a Sick day, and a Healthy day keeps none", async ({ page }) => {
+  await signedInWithMembers(page, ["Luna"]);
+  const luna = page.getByRole("listitem", { name: "Luna" });
+  const sheet = page.getByRole("dialog", { name: /Luna/ });
+  const medications = sheet.getByRole("group", { name: "Medikamente" });
+
+  await page.getByRole("button", { name: "Luna ist krank" }).click();
+  await expect(medications.getByRole("button")).toHaveText([/Paracetamol/, /Ibuprofen/, /Nasenspray/, /Hustensaft/, /Antibiotika/]);
+  await sheet.getByRole("button", { name: /Naja/ }).click();
+  await medications.getByRole("button", { name: "Ibuprofen" }).click();
+  await medications.getByRole("button", { name: "Nasenspray" }).click();
+  await sheet.getByRole("button", { name: "Speichern" }).click();
+  await expect(sheet).toBeHidden();
+
+  // Saved, not just shown.
+  await page.reload();
+  await page.getByRole("button", { name: "Eintrag von Luna bearbeiten" }).click();
+  await expect(medications.getByRole("button", { name: "Ibuprofen" })).toHaveAttribute("aria-pressed", "true");
+  await expect(medications.getByRole("button", { name: "Nasenspray" })).toHaveAttribute("aria-pressed", "true");
+  await expect(medications.getByRole("button", { name: "Paracetamol" })).toHaveAttribute("aria-pressed", "false");
+
+  // A Healthy day takes none along: back to Sick later, nothing is ticked.
+  await sheet.getByRole("button", { name: "Fit", exact: true }).click();
+  await expect(medications).toBeHidden();
+  await sheet.getByRole("button", { name: "Speichern" }).click();
+  await expect(luna).toContainText("🙂 Fit");
+  await page.reload();
+  await page.getByRole("button", { name: "Eintrag von Luna bearbeiten" }).click();
+  await sheet.getByRole("button", { name: "Krank", exact: true }).click();
+  await expect(medications.getByRole("button", { name: "Ibuprofen" })).toHaveAttribute("aria-pressed", "false");
+});
+
 test("follows an illness day by day: Besser lowers the Severity and keeps the Symptoms", async ({ page }) => {
   await signedInWithMembers(page, ["Luna"]);
   const luna = page.getByRole("listitem", { name: "Luna" });
@@ -92,7 +124,7 @@ test("follows an illness day by day: Besser lowers the Severity and keeps the Sy
   await expect(luna.getByRole("button", { name: "Luna: Besser" })).toHaveCount(0); // nothing to follow yet
   await page.getByRole("button", { name: "Luna ist krank" }).click();
   const sheet = page.getByRole("dialog", { name: /Luna/ });
-  await sheet.getByRole("button", { name: "Husten" }).click();
+  await sheet.getByRole("button", { name: "Husten", exact: true }).click();
   await sheet.getByRole("button", { name: "Fieber" }).click();
   await sheet.getByRole("button", { name: /Richtig krank/ }).click();
   await sheet.getByRole("button", { name: "Speichern" }).click();

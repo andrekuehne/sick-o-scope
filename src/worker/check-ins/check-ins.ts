@@ -2,6 +2,7 @@
 // belongs to the Family before writing (see routes.ts).
 
 import type { CheckIn, CheckInState, FillGapsResult, Severity } from "../../shared/check-ins.ts";
+import type { MedicationKey } from "../../shared/medications.ts";
 import type { SymptomKey } from "../../shared/symptoms.ts";
 
 type CheckInRow = {
@@ -14,12 +15,15 @@ type CheckInRow = {
   updated_by_name: string | null;
   updated_at: string;
   symptoms: string;
+  medications: string;
 };
 
 const SELECT_CHECK_INS = `
   SELECT c.member_id, c.date, c.status, c.severity, c.new_bug, c.note, c.updated_at, u.display_name AS updated_by_name,
          (SELECT json_group_array(symptom_key)
-            FROM (SELECT symptom_key FROM check_in_symptoms WHERE check_in_id = c.id ORDER BY symptom_key)) AS symptoms
+            FROM (SELECT symptom_key FROM check_in_symptoms WHERE check_in_id = c.id ORDER BY symptom_key)) AS symptoms,
+         (SELECT json_group_array(medication_key)
+            FROM (SELECT medication_key FROM check_in_medications WHERE check_in_id = c.id ORDER BY medication_key)) AS medications
   FROM check_ins c LEFT JOIN users u ON u.id = c.updated_by`;
 
 function toCheckIn(row: CheckInRow): CheckIn {
@@ -30,6 +34,7 @@ function toCheckIn(row: CheckInRow): CheckIn {
     status: "sick",
     severity: row.severity as Severity,
     symptoms: JSON.parse(row.symptoms) as SymptomKey[],
+    medications: JSON.parse(row.medications) as MedicationKey[],
     newBug: row.new_bug === 1,
   };
 }
@@ -91,7 +96,7 @@ export async function membersOfFamily(db: D1Database, familyId: string, memberId
 type DayWrite = { memberId: string; date: string; state: CheckInState };
 type Context = { familyId: string; userId: string; now: Date };
 
-/** One Check-in row (plus its Symptoms) as JSON, for inserting many rows with a single bound parameter. */
+/** One Check-in row (plus its Symptoms and Medications) as JSON, for inserting many rows with a single bound parameter. */
 function rowsAsJson(writes: (DayWrite & { id: string })[], { familyId, userId, now }: Context) {
   const at = now.toISOString();
   return {
@@ -112,12 +117,15 @@ function rowsAsJson(writes: (DayWrite & { id: string })[], { familyId, userId, n
     symptoms: JSON.stringify(
       writes.flatMap(({ id, state }) => (state.status === "sick" ? state.symptoms : []).map((key) => ({ id, key }))),
     ),
+    medications: JSON.stringify(
+      writes.flatMap(({ id, state }) => (state.status === "sick" ? state.medications : []).map((key) => ({ id, key }))),
+    ),
   };
 }
 
 // D1 limits both the parameters per query (100) and the queries per request (50 on the free plan),
 // so rows travel as one JSON parameter and are unpacked with json_each: a fixed handful of
-// statements however many days and Symptoms. (WHERE true lets SQLite parse the ON CONFLICT.)
+// statements however many days, Symptoms and Medications. (WHERE true lets SQLite parse the ON CONFLICT.)
 const INSERT_CHECK_INS_FROM_JSON = `INSERT INTO check_ins
   (id, family_id, member_id, date, status, severity, new_bug, note, updated_by, created_at, updated_at)
   SELECT j.value ->> 'id', j.value ->> 'familyId', j.value ->> 'memberId', j.value ->> 'date',
@@ -130,9 +138,14 @@ const INSERT_SYMPTOMS_FROM_JSON = `INSERT INTO check_in_symptoms (check_in_id, s
   SELECT j.value ->> 'id', j.value ->> 'key' FROM json_each(?) j
   WHERE EXISTS (SELECT 1 FROM check_ins WHERE id = j.value ->> 'id')`;
 
+/** Medications for Check-ins that exist, as with Symptoms. */
+const INSERT_MEDICATIONS_FROM_JSON = `INSERT INTO check_in_medications (check_in_id, medication_key)
+  SELECT j.value ->> 'id', j.value ->> 'key' FROM json_each(?) j
+  WHERE EXISTS (SELECT 1 FROM check_ins WHERE id = j.value ->> 'id')`;
+
 /**
- * Saves a Member's day as a complete state: it replaces whatever was there, Symptoms
- * included, in one transaction. Saving the same state twice changes nothing.
+ * Saves a Member's day as a complete state: it replaces whatever was there, Symptoms and
+ * Medications included, in one transaction. Saving the same state twice changes nothing.
  */
 export async function saveCheckIn(db: D1Database, write: DayWrite & Context): Promise<CheckIn> {
   const { familyId, memberId, date } = write;
@@ -157,6 +170,15 @@ export async function saveCheckIn(db: D1Database, write: DayWrite & Context): Pr
          SELECT (SELECT id FROM check_ins WHERE member_id = ? AND date = ?), j.value ->> 'key' FROM json_each(?) j`,
       )
       .bind(memberId, date, rows.symptoms),
+    db
+      .prepare("DELETE FROM check_in_medications WHERE check_in_id = (SELECT id FROM check_ins WHERE member_id = ? AND date = ?)")
+      .bind(memberId, date),
+    db
+      .prepare(
+        `INSERT INTO check_in_medications (check_in_id, medication_key)
+         SELECT (SELECT id FROM check_ins WHERE member_id = ? AND date = ?), j.value ->> 'key' FROM json_each(?) j`,
+      )
+      .bind(memberId, date, rows.medications),
   ]);
   const saved = await checkInOn(db, familyId, memberId, date);
   if (!saved) throw new Error("A saved Check-in can't be read back");
@@ -180,8 +202,9 @@ export async function fillGaps(db: D1Database, writes: DayWrite[], context: Cont
   const rows = rowsAsJson(planned, context);
   const [inserted] = await db.batch<{ id: string }>([
     db.prepare(`${INSERT_CHECK_INS_FROM_JSON} ON CONFLICT (member_id, date) DO NOTHING RETURNING id`).bind(rows.checkIns),
-    // Only rows written just now exist under their new ids, so skipped days get no Symptoms.
+    // Only rows written just now exist under their new ids, so skipped days get no Symptoms or Medications.
     db.prepare(INSERT_SYMPTOMS_FROM_JSON).bind(rows.symptoms),
+    db.prepare(INSERT_MEDICATIONS_FROM_JSON).bind(rows.medications),
   ]);
   const writtenIds = new Set(inserted?.results.map((row) => row.id));
 

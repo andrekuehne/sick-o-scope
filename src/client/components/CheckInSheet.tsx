@@ -1,5 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { type CheckIn, CheckInState, NOTE_MAX_LENGTH, type Severity } from "../../shared/check-ins.ts";
+import { MEDICATIONS, type MedicationKey } from "../../shared/medications.ts";
 import { SYMPTOM_GROUPS, type SymptomKey } from "../../shared/symptoms.ts";
 import type { WriteCallbacks } from "../check-ins.ts";
 import { t } from "../strings.ts";
@@ -16,10 +17,10 @@ const BUG_CHOICES = [
 ] as const;
 
 /**
- * The editor for one Member's day, as a bottom sheet: Healthy or Sick, the Symptom Badges,
- * the Severity and a note, and after a Sick day whether this is still the same Bug. Saving
- * replaces the whole day; Delete turns it back into a Gap. Everything is a tap target, and
- * the actions sit at the bottom, within reach of a thumb.
+ * The editor for one Member's day, as a bottom sheet: Healthy or Sick, the Severity, the
+ * Symptom and Medication Badges and a note, and after a Sick day whether this is still the
+ * same Bug. Saving replaces the whole day; Delete turns it back into a Gap. Everything is a
+ * tap target, and the actions sit at the bottom, within reach of a thumb.
  */
 export function CheckInSheet({
   title,
@@ -55,8 +56,10 @@ export function CheckInSheet({
   const noteId = useId();
 
   const [status, setStatus] = useState(checkIn?.status ?? startAs);
-  // Symptoms and Severity survive a detour to Healthy, in case of a mis-tap.
+  // Symptoms, Medications and Severity survive a detour to Healthy, in case of a mis-tap;
+  // a Healthy day is saved without them.
   const [symptoms, setSymptoms] = useState<SymptomKey[]>(checkIn?.status === "sick" ? checkIn.symptoms : []);
+  const [medications, setMedications] = useState<MedicationKey[]>(checkIn?.status === "sick" ? checkIn.medications : []);
   const [severity, setSeverity] = useState<Severity | null>(checkIn?.status === "sick" ? checkIn.severity : null);
   const [newBug, setNewBug] = useState(checkIn?.status === "sick" && checkIn.newBug);
   const [note, setNote] = useState(checkIn?.note ?? "");
@@ -69,11 +72,11 @@ export function CheckInSheet({
 
   // The same shared schema the API checks, so the sheet can't send what the server refuses.
   const parsed = CheckInState.safeParse(
-    status === "healthy" ? { status, note } : { status, severity: severity ?? undefined, symptoms, note, newBug },
+    status === "healthy" ? { status, note } : { status, severity: severity ?? undefined, symptoms, medications, note, newBug },
   );
   const done: WriteCallbacks = { onSuccess: onClose, onError: () => setFailed(true) };
-  const toggle = (key: SymptomKey) =>
-    setSymptoms((current) => (current.includes(key) ? current.filter((k) => k !== key) : [...current, key]));
+  const toggle = <Key,>(key: Key) => (current: Key[]) =>
+    current.includes(key) ? current.filter((k) => k !== key) : [...current, key];
 
   return (
     // Escape and Android's back gesture close a modal dialog; that only cancels.
@@ -166,7 +169,7 @@ export function CheckInSheet({
                         className="choice badge-choice"
                         aria-pressed={symptoms.includes(s.key)}
                         aria-label={s.name}
-                        onClick={() => toggle(s.key)}
+                        onClick={() => setSymptoms(toggle(s.key))}
                       >
                         <span className="badge-emoji" aria-hidden="true">
                           {s.badge}
@@ -179,6 +182,30 @@ export function CheckInSheet({
                   </div>
                 </div>
               ))}
+            </fieldset>
+
+            <fieldset className="field">
+              <legend>{t.sheet.medications}</legend>
+              <span className="muted field-hint">{t.sheet.medicationsHint}</span>
+              <div className="badge-grid">
+                {MEDICATIONS.map((m) => (
+                  <button
+                    key={m.key}
+                    type="button"
+                    className="choice badge-choice"
+                    aria-pressed={medications.includes(m.key)}
+                    aria-label={m.name}
+                    onClick={() => setMedications(toggle(m.key))}
+                  >
+                    <span className="badge-emoji" aria-hidden="true">
+                      {m.badge}
+                    </span>
+                    <span className="badge-name" aria-hidden="true">
+                      {m.name}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </fieldset>
           </>
         )}

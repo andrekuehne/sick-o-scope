@@ -1,6 +1,7 @@
 // Every UI string lives here, in German. Components never hard-code text.
-// Two exceptions, both because the Worker needs the words too: the Symptom catalog
-// (src/shared/symptoms.ts), and the CSV export's headings and statuses (src/worker/export/csv.ts).
+// Two exceptions, both because the Worker needs the words too: the Symptom and Medication
+// catalogs (src/shared/symptoms.ts, src/shared/medications.ts), and the CSV export's
+// headings and statuses (src/worker/export/csv.ts).
 // Kept as one plain object so a second language can be added later
 // by giving it the same shape (see `Strings`).
 
@@ -118,6 +119,8 @@ export const de = {
     pickSeverity: "Wähl noch aus, wie schlimm es ist.",
     symptoms: "Was ist los?",
     symptomsHint: "Optional: auch ohne Symptome speicherbar.",
+    medications: "Medikamente",
+    medicationsHint: "Nur antippen, was genommen wurde.",
     bug: "Noch der alte Infekt?",
     sameBug: "Gleicher Infekt",
     newBug: "Neuer Infekt",
