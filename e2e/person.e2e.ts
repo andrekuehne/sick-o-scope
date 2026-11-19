@@ -52,3 +52,27 @@ test("opens a Member's Person screen from Heute, Verlauf and Saison, and Back re
   await expect(page.getByRole("heading", { name: "Saison", level: 1 })).toBeVisible();
   await expect(seasons).toContainText(`Saison ${lastSeason.label}`);
 });
+
+test("shows the Medications taken on the Heute card and on the Person screen", async ({ page }) => {
+  await signedInWithMembers(page, ["Luna", "Max"]);
+  await logDay(page, "Luna", 0, { status: "sick", severity: 2, symptoms: ["cough"], medications: ["nasal-spray", "ibuprofen"] });
+  await logDay(page, "Max", 0, { status: "sick", severity: 1, symptoms: ["runny-nose"] });
+  await page.reload();
+
+  // Heute: the Medication Badges come after the Symptom Badges, in catalog order.
+  const luna = page.getByRole("listitem", { name: "Luna" });
+  await expect(luna.getByRole("img", { name: "Ibuprofen" })).toBeVisible();
+  const badges = await luna.getByRole("img").evaluateAll((images) => images.map((image) => image.getAttribute("aria-label")));
+  expect(badges).toEqual(["Husten", "Ibuprofen", "Nasenspray"]);
+
+  // Luna's Person screen lists them with their days…
+  await page.getByRole("link", { name: "Saison von Luna" }).click();
+  const medications = page.getByRole("list", { name: "Medikamente" });
+  await expect(medications.getByRole("listitem")).toHaveText([/Ibuprofen\s*1 Tag/, /Nasenspray\s*1 Tag/]);
+
+  // …and Max's leaves them out, as Max took none.
+  await page.goBack();
+  await page.getByRole("link", { name: "Saison von Max" }).click();
+  await expect(page.getByRole("heading", { name: "Max", level: 1 })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Medikamente" })).toHaveCount(0);
+});

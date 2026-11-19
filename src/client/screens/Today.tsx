@@ -5,6 +5,7 @@ import { addDays, daysBetweenInclusive, isCalendarDate } from "../../shared/date
 import type { CheckIn, CheckInState } from "../../shared/check-ins.ts";
 import { type BugDay, createHistory, type DayStatus, type History, missedDays, seasonOf, type Shortcut } from "../../shared/history.ts";
 import type { Member } from "../../shared/members.ts";
+import { medication, medicationsInCatalogOrder } from "../../shared/medications.ts";
 import { symptom, symptomsInCatalogOrder } from "../../shared/symptoms.ts";
 import { BUG_LOOKBACK_DAYS, MAX_RANGE_DAYS, useCheckIns, useCheckInWrites } from "../check-ins.ts";
 import { CheckInSheet } from "../components/CheckInSheet.tsx";
@@ -240,15 +241,17 @@ function MemberDayCard({
             </span>
           </span>
           <span className="day-card-status">{t.today.dayBefore(isToday, previousDayText(dayBefore))}</span>
-          {status?.kind === "sick" && status.symptoms.length > 0 && (
+          {status?.kind === "sick" && status.symptoms.length + status.medications.length > 0 && (
             <span className="day-card-badges">
-              {symptomsInCatalogOrder(status.symptoms)
-                .map(symptom)
-                .map(({ key, name, badge }) => (
-                  <span key={key} role="img" aria-label={name} title={name}>
-                    {badge}
-                  </span>
-                ))}
+              {/* The Symptoms first, then the Medications taken. */}
+              {[
+                ...symptomsInCatalogOrder(status.symptoms).map(symptom),
+                ...medicationsInCatalogOrder(status.medications).map(medication),
+              ].map(({ key, name, badge }) => (
+                <span key={key} role="img" aria-label={name} title={name}>
+                  {badge}
+                </span>
+              ))}
             </span>
           )}
         </div>

@@ -2,6 +2,7 @@ import { useMemo } from "react";
 import { useLocation, useNavigate, useParams } from "react-router";
 import type { Me } from "../../shared/auth.ts";
 import { createHistory, type MemberOverview, seasonOf } from "../../shared/history.ts";
+import { medication } from "../../shared/medications.ts";
 import { symptom } from "../../shared/symptoms.ts";
 import { useAllCheckIns } from "../check-ins.ts";
 import { AwardList } from "../components/AwardList.tsx";
@@ -135,19 +136,20 @@ function PersonSeason({ person }: { person: MemberOverview }) {
       {stats.topSymptoms.length === 0 ? (
         <p className="muted">{t.person.noSymptoms}</p>
       ) : (
-        <ol className="record-list">
-          {stats.topSymptoms.map(({ symptom: key, days }) => {
-            const { name, badge } = symptom(key);
-            return (
-              <li key={key} className="record">
-                <span>
-                  <span aria-hidden="true">{badge}</span> {name}
-                </span>
-                <strong>{t.days(days)}</strong>
-              </li>
-            );
-          })}
-        </ol>
+        <BadgeDayList
+          label={t.person.topSymptoms}
+          rows={stats.topSymptoms.map(({ symptom: key, days }) => ({ ...symptom(key), days }))}
+        />
+      )}
+
+      {stats.medications.length > 0 && (
+        <>
+          <h2>{t.person.medications}</h2>
+          <BadgeDayList
+            label={t.person.medications}
+            rows={stats.medications.map(({ medication: key, days }) => ({ ...medication(key), days }))}
+          />
+        </>
       )}
 
       <h2>{t.person.bugs}</h2>
@@ -166,6 +168,22 @@ function PersonSeason({ person }: { person: MemberOverview }) {
         </ul>
       )}
     </>
+  );
+}
+
+/** Symptoms or Medications with their Badges, and on how many days of the Season. */
+function BadgeDayList({ label, rows }: { label: string; rows: { key: string; name: string; badge: string; days: number }[] }) {
+  return (
+    <ol className="record-list" aria-label={label}>
+      {rows.map(({ key, name, badge, days }) => (
+        <li key={key} className="record">
+          <span>
+            <span aria-hidden="true">{badge}</span> {name}
+          </span>
+          <strong>{t.days(days)}</strong>
+        </li>
+      ))}
+    </ol>
   );
 }
 

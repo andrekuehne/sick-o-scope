@@ -42,7 +42,7 @@ it("tells each Member's status on a day: Healthy, Sick, or a Gap when nothing wa
   );
 
   expect(history.statusOf("luna", "2026-11-14")).toEqual({ kind: "healthy" });
-  expect(history.statusOf("max", "2026-11-14")).toEqual({ kind: "sick", severity: 3, symptoms: ["cough"] });
+  expect(history.statusOf("max", "2026-11-14")).toEqual({ kind: "sick", severity: 3, symptoms: ["cough"], medications: [] });
   expect(history.statusOf("luna", "2026-11-15")).toEqual({ kind: "gap" });
 });
 
@@ -65,7 +65,7 @@ it("shows a day for the active Members only, and counts only explicit Check-ins"
 
 it("still knows an archived Member's past days", () => {
   const history = createHistory([member("oma", true)], [sick("oma", "2026-10-01", 4)]);
-  expect(history.statusOf("oma", "2026-10-01")).toEqual({ kind: "sick", severity: 4, symptoms: [] });
+  expect(history.statusOf("oma", "2026-10-01")).toEqual({ kind: "sick", severity: 4, symptoms: [], medications: [] });
 });
 
 it("keeps a Bug together over a Gap and ends it with a Healthy day; the next Sick day starts a new one", () => {
@@ -282,6 +282,33 @@ it("prompts only for Gaps that began at most 14 days back, skips Members with no
   expect(createHistory([member("luna")], [healthy("luna", "2026-11-14")]).gapProposals("2026-11-15")).toEqual([]);
 });
 
+it("counts the days each Medication was taken in a Member's Season, most first, ties in catalog order", () => {
+  const history = createHistory(
+    [member("luna"), member("max")],
+    [
+      { ...sick("luna", "2026-11-10", 3), medications: ["ibuprofen", "nasal-spray"] },
+      { ...sick("luna", "2026-11-11", 2), medications: ["nasal-spray"] },
+      { ...sick("luna", "2026-11-12", 2), medications: ["antibiotics"] },
+      { ...sick("luna", "2026-11-13", 1), medications: ["paracetamol"] },
+      { ...sick("luna", "2026-08-31", 1), medications: ["antibiotics"] }, // last Season
+      sick("max", "2026-11-10", 2),
+    ],
+  );
+
+  expect(history.seasonStats(seasonOf("2026-11-15")).map((s) => [s.member.id, s.medications])).toEqual([
+    [
+      "luna",
+      [
+        { medication: "nasal-spray", days: 2 },
+        { medication: "paracetamol", days: 1 },
+        { medication: "ibuprofen", days: 1 },
+        { medication: "antibiotics", days: 1 },
+      ],
+    ],
+    ["max", []],
+  ]);
+});
+
 it("puts 31 Aug and 1 Sep in different Seasons, each running 1 Sep – 31 Aug", () => {
   expect(seasonOf("2026-08-31")).toEqual({ label: "2025/26", start: "2025-09-01", end: "2026-08-31" });
   expect(seasonOf("2026-09-01")).toEqual({ label: "2026/27", start: "2026-09-01", end: "2027-08-31" });
@@ -319,14 +346,15 @@ it("sums up a Season per Member, with Streaks cut at its start and each Bug coun
         { symptom: "runny-nose", days: 1 },
         { symptom: "cough", days: 1 },
       ],
+      medications: [],
     },
     // Max's Sick day on 1 Sep counts here, but the Bug belongs to 2025/26.
-    { member: member("max"), sickDays: 1, bugs: 0, longestBug: null, longestHealthyStreak: 2, worstSeverity: 1, topSymptoms: [] },
+    { member: member("max"), sickDays: 1, bugs: 0, longestBug: null, longestHealthyStreak: 2, worstSeverity: 1, topSymptoms: [], medications: [] },
   ]);
   expect(history.seasonStats(seasonOf("2026-03-01"))).toEqual([
-    { member: member("luna"), sickDays: 0, bugs: 0, longestBug: null, longestHealthyStreak: 7, worstSeverity: null, topSymptoms: [] },
-    { member: member("max"), sickDays: 1, bugs: 1, longestBug: 2, longestHealthyStreak: null, worstSeverity: 2, topSymptoms: [] },
-    { member: member("oma", true), sickDays: 1, bugs: 1, longestBug: 1, longestHealthyStreak: null, worstSeverity: 3, topSymptoms: [] },
+    { member: member("luna"), sickDays: 0, bugs: 0, longestBug: null, longestHealthyStreak: 7, worstSeverity: null, topSymptoms: [], medications: [] },
+    { member: member("max"), sickDays: 1, bugs: 1, longestBug: 2, longestHealthyStreak: null, worstSeverity: 2, topSymptoms: [], medications: [] },
+    { member: member("oma", true), sickDays: 1, bugs: 1, longestBug: 1, longestHealthyStreak: null, worstSeverity: 3, topSymptoms: [], medications: [] },
   ]);
   // Among the best Streaks ever, Luna's Streak across 1 Sep counts whole.
   expect(history.bestStreaks().members[0]).toEqual({
@@ -447,6 +475,7 @@ it("shows one Member's Season on their Person screen: numbers, Bugs, and the top
       { symptom: "runny-nose", days: 2 },
       { symptom: "cough", days: 2 },
     ],
+    medications: [],
   });
   expect(overview?.bugs.map((b) => [b.number, b.from, b.to, b.length, b.worstSeverity])).toEqual([
     [1, "2026-11-02", "2026-11-04", 3, 4],

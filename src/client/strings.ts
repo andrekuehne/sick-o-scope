@@ -225,6 +225,8 @@ export const de = {
       now < then ? `${then - now} weniger 🎉` : now > then ? `${now - then} mehr` : "gleich viele",
     topSymptoms: "Häufigste Symptome",
     noSymptoms: "Keine Symptome eingetragen.",
+    /** The Season's Medications, only shown when there are any. */
+    medications: "Medikamente",
     bugs: "Infekte",
     noBugs: "Kein Infekt in dieser Saison. 💪",
     /** "Infekt #2" */

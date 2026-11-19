@@ -5,12 +5,13 @@
 import type { CheckIn, CheckInState, Severity } from "./check-ins.ts";
 import { addDays, datesBetween, daysBetweenInclusive } from "./dates.ts";
 import type { Member } from "./members.ts";
+import { MEDICATION_KEYS, type MedicationKey } from "./medications.ts";
 import { SYMPTOM_KEYS, type SymptomKey } from "./symptoms.ts";
 
 export type DayStatus =
   | { kind: "gap" }
   | { kind: "healthy" }
-  | { kind: "sick"; severity: Severity; symptoms: SymptomKey[] };
+  | { kind: "sick"; severity: Severity; symptoms: SymptomKey[]; medications: MedicationKey[] };
 
 /** One date from the Family's point of view: its active Members, and how many have a Check-in. */
 export type FamilyDay = {
@@ -25,8 +26,9 @@ export type Streak = { from: string; to: string; days: number };
 
 /**
  * One Member's Season: their Sick days in it, the Bugs that started in it (and the longest's
- * length), their longest Healthy Streak inside it, their worst day, and their 3 most frequent
- * Symptoms by days (ties in catalog order). null where there's none.
+ * length), their longest Healthy Streak inside it, their worst day, their 3 most frequent
+ * Symptoms by days, and the days each Medication was taken (both most first, ties in catalog
+ * order). null where there's none.
  */
 export type SeasonStats = {
   member: Member;
@@ -36,6 +38,7 @@ export type SeasonStats = {
   longestHealthyStreak: number | null;
   worstSeverity: Severity | null;
   topSymptoms: { symptom: SymptomKey; days: number }[];
+  medications: { medication: MedicationKey; days: number }[];
 };
 
 /** How many Symptoms a Member's Season names as their most frequent. */
@@ -243,7 +246,7 @@ export function createHistory(members: Member[], checkIns: CheckIn[]): History {
     const checkIn = byMemberAndDate.get(key(memberId, date));
     if (!checkIn) return { kind: "gap" };
     if (checkIn.status === "healthy") return { kind: "healthy" };
-    return { kind: "sick", severity: checkIn.severity, symptoms: checkIn.symptoms };
+    return { kind: "sick", severity: checkIn.severity, symptoms: checkIn.symptoms, medications: checkIn.medications };
   }
 
   function day(date: string): FamilyDay {
@@ -294,6 +297,7 @@ export function createHistory(members: Member[], checkIns: CheckIn[]): History {
       longestHealthyStreak: largest(healthyStreaks.map((streak) => streak.days)),
       worstSeverity: largest(sick.map((c) => c.severity)),
       topSymptoms: topSymptoms(sick.map((c) => c.symptoms)),
+      medications: medicationDays(sick.map((c) => c.medications)),
     };
   }
 
@@ -646,12 +650,21 @@ function stateToCopy(checkIn: CheckIn): CheckInState {
 
 /** The most frequent Symptoms by days, ties in catalog order: the top 3 at most. */
 function topSymptoms(days: SymptomKey[][]): { symptom: SymptomKey; days: number }[] {
-  const counted = SYMPTOM_KEYS.map((symptom) => ({ symptom, days: days.filter((d) => d.includes(symptom)).length }));
+  return mostDays(SYMPTOM_KEYS, days)
+    .slice(0, TOP_SYMPTOMS)
+    .map(({ key, days }) => ({ symptom: key, days }));
+}
+
+/** Every Medication taken by days, most first, ties in catalog order. */
+function medicationDays(days: MedicationKey[][]): { medication: MedicationKey; days: number }[] {
+  return mostDays(MEDICATION_KEYS, days).map(({ key, days }) => ({ medication: key, days }));
+}
+
+/** Of a catalog's keys, those named on any of the `days`, with on how many: most first, ties in catalog order. */
+function mostDays<Key extends string>(catalog: readonly Key[], days: readonly (readonly Key[])[]): { key: Key; days: number }[] {
+  const counted = catalog.map((key) => ({ key, days: days.filter((d) => d.includes(key)).length }));
   // A stable sort keeps the catalog order among ties.
-  return counted
-    .filter((c) => c.days > 0)
-    .sort((a, b) => b.days - a.days)
-    .slice(0, TOP_SYMPTOMS);
+  return counted.filter((c) => c.days > 0).sort((a, b) => b.days - a.days);
 }
 
 /** The runs of consecutive days among `dates` (in order, each at most once). */
