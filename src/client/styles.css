@@ -786,16 +786,25 @@ h3 {
   background: var(--accent-soft);
 }
 
+/*
+ * Lanes share the free height below the axis (--lane-share, each lane's part including the gap
+ * under it, measured by the screen), between a compact minimum and a maximum: a small Family
+ * fills the screen, a big one stays compact.
+ */
 .timeline {
-  --lane-height: 44px;
+  --lane-min: 44px;
+  --lane-max: 120px;
+  --lane-gap: 4px;
+  --lane-height: clamp(var(--lane-min), calc(var(--lane-share, 0px) - var(--lane-gap)), var(--lane-max));
   --axis-height: 40px;
   --wave-label-height: 20px;
   display: flex;
   gap: 6px;
 }
 
+/* Zoomed in to single days, there's room for the Badges. */
 .timeline[data-detail="true"] {
-  --lane-height: 56px;
+  --lane-min: 56px;
 }
 
 /* A row under the day numbers for the waves' labels, only when there are any. */
@@ -815,7 +824,7 @@ h3 {
   display: flex;
   align-items: center;
   height: var(--lane-height);
-  margin-bottom: 4px;
+  margin-bottom: var(--lane-gap);
 }
 
 .timeline-scroller {
@@ -898,7 +907,7 @@ h3 {
 
 .timeline-lane {
   height: var(--lane-height);
-  margin-bottom: 4px;
+  margin-bottom: var(--lane-gap);
 }
 
 .timeline-day,

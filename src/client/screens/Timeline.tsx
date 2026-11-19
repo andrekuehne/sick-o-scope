@@ -1,4 +1,4 @@
-import { type RefObject, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { type CSSProperties, type RefObject, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { Me } from "../../shared/auth.ts";
 import type { Severity } from "../../shared/check-ins.ts";
 import { addDays, datesBetween, daysBetweenInclusive, isMonday } from "../../shared/dates.ts";
@@ -66,8 +66,12 @@ export function TimelineScreen({ me }: { me: Me }) {
     (m) => !m.archived || checkIns.data?.some((c) => c.memberId === m.id && c.date >= season.start),
   );
   const [editing, setEditing] = useState<{ member: Member; date: string } | null>(null);
-
+  const screen = useRef<HTMLElement>(null);
+  const timeline = useRef<HTMLDivElement>(null);
+  const axisSpacer = useRef<HTMLDivElement>(null);
   const scroller = useRef<HTMLDivElement>(null);
+  const laneRefs = useMemo(() => ({ screen, timeline, axisSpacer, scroller }), []);
+  const laneShare = useLaneShare(laneRefs, lanes.length);
   const [viewport, measure] = useViewport(scroller);
   const drawn = drawnDays(viewport, pxPerDay, dates.length);
   // What stays in view when the zoom changes: the right edge (today) if that's where we
@@ -101,7 +105,7 @@ export function TimelineScreen({ me }: { me: Me }) {
   };
 
   return (
-    <section className="screen">
+    <section className="screen" ref={screen}>
       <h1>{t.timeline.title}</h1>
 
       <SeasonBar
@@ -126,9 +130,15 @@ export function TimelineScreen({ me }: { me: Me }) {
       ) : (
         <>
           {checkIns.data?.length === 0 && <p className="muted">{t.timeline.empty}</p>}
-          <div className="timeline" data-detail={pxPerDay >= DAY_DETAIL_PX} data-waves={waves.length > 0}>
+          <div
+            ref={timeline}
+            className="timeline"
+            data-detail={pxPerDay >= DAY_DETAIL_PX}
+            data-waves={waves.length > 0}
+            style={laneShare === null ? undefined : ({ "--lane-share": `${laneShare}px` } as CSSProperties)}
+          >
             <div className="timeline-names">
-              <div className="timeline-axis-spacer" />
+              <div ref={axisSpacer} className="timeline-axis-spacer" />
               {lanes.map((member) => (
                 <div key={member.id} className="timeline-name">
                   <MemberAvatarLink member={member} season={season} />
@@ -357,6 +367,49 @@ function blocksOf<Key extends string>(dates: string[], keyOf: (date: string) => 
 /** Where `days` days starting at index `start` go on the scale. */
 function place(start: number, days: number, pxPerDay: number) {
   return { left: start * pxPerDay, width: days * pxPerDay };
+}
+
+/** What the lane height is measured from: the screen, and the timeline's parts. */
+type LaneRefs = Record<"screen" | "timeline" | "axisSpacer" | "scroller", RefObject<HTMLElement | null>>;
+
+/**
+ * Each of `count` lanes' share of the window, gap included: what's left below the axis once
+ * the legend, the scroller's own scrollbar (on desktops) and the space the screen's container
+ * keeps free at the bottom (for the navigation) are taken off. The stylesheet turns it into a
+ * lane height between a compact minimum and a maximum. It doesn't depend on the lanes' current
+ * height, so measuring again after they resize settles at once.
+ */
+/** `refs` must stay the same object across renders. */
+function useLaneShare(refs: LaneRefs, count: number): number | null {
+  const [share, setShare] = useState<number | null>(null);
+  const measure = useCallback(() => {
+    const [section, timeline, axisSpacer, scroller] = [refs.screen, refs.timeline, refs.axisSpacer, refs.scroller].map((ref) => ref.current);
+    const container = section?.parentElement;
+    if (!section || !container || !timeline || !axisSpacer || !scroller || count === 0) return;
+    const lanesTop = axisSpacer.getBoundingClientRect().bottom + window.scrollY;
+    const scrollbar = scroller.offsetHeight - scroller.clientHeight;
+    const below =
+      section.getBoundingClientRect().bottom - timeline.getBoundingClientRect().bottom + parseFloat(getComputedStyle(container).paddingBottom);
+    setShare(Math.floor((window.innerHeight - lanesTop - scrollbar - below) / count));
+  }, [refs, count]);
+
+  // After every render, before it's painted: the timeline appearing after loading, another
+  // Season, the waves' row. An unchanged result doesn't render again.
+  useLayoutEffect(measure);
+  // And whatever moves the timeline without a render here: the window, a notice or the offline
+  // banner (outside the screen, so the container or the page changes size instead).
+  useEffect(() => {
+    const observer = new ResizeObserver(measure);
+    for (const element of [refs.screen.current, refs.screen.current?.parentElement, document.body]) {
+      if (element) observer.observe(element);
+    }
+    window.addEventListener("resize", measure);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", measure);
+    };
+  }, [refs, measure]);
+  return share;
 }
 
 /** The visible part of the scroller, plus a screen's width either side, in pixels. */

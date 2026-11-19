@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Locator, test } from "@playwright/test";
 import { addDays, localToday } from "../src/shared/dates.ts";
 import { seasonOf } from "../src/shared/history.ts";
 import { logDay, signedInWithMembers } from "./helpers.ts";
@@ -41,3 +41,53 @@ test("edits a past day from the timeline, and the timeline shows the change", as
   await expect(luna.getByRole("button", { name: /: Richtig krank \(Husten\)$/ })).toBeVisible();
   await expect(sheet).toBeHidden();
 });
+
+test("lets the lanes fill the free height for a small Family, and stay level with the avatars", async ({ page }) => {
+  const names = ["Luna", "Max", "Oma"];
+  await signedInWithMembers(page, names);
+  const nav = page.getByRole("navigation", { name: "Hauptnavigation" });
+  await nav.getByRole("link", { name: "Verlauf" }).click();
+  const lanes = names.map((name) => page.getByRole("group", { name }));
+  await expect(lanes[0]!).toBeVisible();
+
+  // On a phone-sized screen (740px tall), three lanes are taller than the compact 44px but
+  // not yet at the 120px maximum, all the same height…
+  const heights = await Promise.all(lanes.map(async (lane) => (await box(lane)).height));
+  const height = heights[0]!;
+  expect(height).toBeGreaterThan(60);
+  expect(height).toBeLessThan(120);
+  for (const other of heights) expect(other).toBeCloseTo(height, 0);
+  // …and fill the screen: the legend ends just above the navigation.
+  const legend = await box(page.getByRole("list", { name: "Legende" }));
+  expect((await box(nav)).y - (legend.y + legend.height)).toBeLessThan(40);
+
+  // Each avatar stays level with its lane.
+  for (const [i, name] of names.entries()) {
+    const lane = await box(lanes[i]!);
+    const avatar = await box(page.getByRole("link", { name: `Saison von ${name}` }));
+    expect(avatar.y + avatar.height / 2).toBeCloseTo(lane.y + lane.height / 2, 0);
+  }
+
+  // A shorter window gets shorter lanes, never below the compact height.
+  await page.setViewportSize({ width: page.viewportSize()!.width, height: 500 });
+  await expect.poll(async () => (await box(lanes[0]!)).height).toBeLessThan(height);
+  expect((await box(lanes[0]!)).height).toBeGreaterThanOrEqual(44);
+
+  // Zoomed in to single days, lanes are at least 56px for the Badges.
+  await page.getByRole("button", { name: "Tag", exact: true }).click();
+  await expect.poll(async () => (await box(lanes[0]!)).height).toBeGreaterThanOrEqual(56);
+});
+
+test("keeps today's compact lanes for a big Family", async ({ page }) => {
+  await signedInWithMembers(page, ["Luna", "Max", "Oma", "Opa", "Ben", "Mia", "Tom", "Lia", "Ida", "Jan", "Eva", "Kai"]);
+  await page.getByRole("navigation", { name: "Hauptnavigation" }).getByRole("link", { name: "Verlauf" }).click();
+  const luna = page.getByRole("group", { name: "Luna" });
+  await expect(luna).toBeVisible();
+  expect((await box(luna)).height).toBeCloseTo(44, 0);
+});
+
+async function box(locator: Locator) {
+  const found = await locator.boundingBox();
+  if (!found) throw new Error("not on screen");
+  return found;
+}
