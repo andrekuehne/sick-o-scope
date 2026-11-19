@@ -187,6 +187,10 @@ export const de = {
       bravery: "🎖️ Tapferkeitsmedaille",
       "season-opener": "🎬 Saisonauftakt",
       "wave-rider": "🌊 Wellenreiter",
+      junkie: "💊 Junkie",
+      "nasal-spray-junkie": "💦 Nasenspray-Junkie",
+      "cocktail-mixer": "🍹 Cocktail-Mixer",
+      tough: "💪 Hart im Nehmen",
       unbreakable: "🦸 Unverwüstlich",
       mystery: "🔮 Mystery-Champion",
     },
@@ -203,6 +207,12 @@ export const de = {
       bravery: (severity: string, n: number) => `${days(n)} ${severity}`,
       seasonOpener: (date: string) => `erster Infekt der Saison, am ${date}`,
       waveRider: (n: number) => `bei ${n === 1 ? "1 Welle" : `${n} Wellen`} dabei`,
+      junkie: (n: number) => `an ${daysDative(n)} Medikamente`,
+      nasalSprayJunkie: (n: number) => `an ${daysDative(n)} Nasenspray`,
+      /** "3 Medikamente an einem Tag", "an 2 Tagen je 3 Medikamente" */
+      cocktailMixer: (medications: number, n: number) =>
+        n === 1 ? `${medications} Medikamente an einem Tag` : `an ${daysDative(n)} je ${medications} Medikamente`,
+      tough: (n: number) => `${days(n)} krank ohne Medikamente`,
       champion: (name: string, n: number) => `${name} an ${daysDative(n)}`,
       unbreakable: "kein einziger Krankheitstag",
       mystery: "krank, aber ganz ohne Symptome",

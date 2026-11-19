@@ -68,6 +68,14 @@ function reasonFor(award: Exclude<Award, { kind: "symptom-champion" }>): string 
       return reason.seasonOpener(shortDate(award.date));
     case "wave-rider":
       return reason.waveRider(award.waves);
+    case "junkie":
+      return reason.junkie(award.days);
+    case "nasal-spray-junkie":
+      return reason.nasalSprayJunkie(award.days);
+    case "cocktail-mixer":
+      return reason.cocktailMixer(award.medications, award.days);
+    case "tough":
+      return reason.tough(award.days);
     case "unbreakable":
       return reason.unbreakable;
     case "mystery":

@@ -2,6 +2,7 @@ import { expect, it } from "vitest";
 import type { CheckIn } from "../src/shared/check-ins.ts";
 import { addDays } from "../src/shared/dates.ts";
 import {
+  type Award,
   createHistory,
   HEALTHY_MILESTONES,
   LOGGING_MILESTONES,
@@ -647,6 +648,8 @@ it("gives each Award to whoever did best in the Season; ties share it, and zero 
     { award: { kind: "bravery", severity: 2, days: 1 }, members: [luna, max] },
     { award: { kind: "season-opener", date: "2026-11-03" }, members: [luna, max] },
     { award: { kind: "wave-rider", waves: 1 }, members: [luna, max] },
+    // No Medication Awards but Hart im Nehmen: nobody took anything.
+    { award: { kind: "tough", days: 1 }, members: [luna, max] },
     // Sam, never Sick, didn't win any of them.
     { award: { kind: "unbreakable" }, members: [member("sam")] },
   ]);
@@ -703,6 +706,59 @@ it("gives Tapferkeitsmedaille for the highest Severity, and among those for the 
   });
 });
 
+it("gives the Medication Awards: Junkie, Nasenspray-Junkie, Cocktail-Mixer and Hart im Nehmen", () => {
+  const history = createHistory(
+    [member("luna"), member("max"), member("sam")],
+    [
+      // Luna: three Medications at once on two days, Nasenspray on both, and one day without.
+      { ...sick("luna", "2026-11-01", 2), medications: ["ibuprofen", "paracetamol", "nasal-spray"] },
+      { ...sick("luna", "2026-11-02", 2), medications: ["nasal-spray", "ibuprofen", "cough-syrup"] },
+      sick("luna", "2026-11-03", 1),
+      // Max: three at once too, but on one day only; Medications on the most days.
+      { ...sick("max", "2026-12-01", 3), medications: ["ibuprofen", "paracetamol", "antibiotics"] },
+      { ...sick("max", "2026-12-02", 1), medications: ["antibiotics"] },
+      { ...sick("max", "2026-12-03", 1), medications: ["antibiotics"] },
+      // Sam: never took anything; the Fast gesund day doesn't count for Hart im Nehmen.
+      sick("sam", "2027-01-10", 2),
+      sick("sam", "2027-01-11", 2),
+      sick("sam", "2027-01-12", 0),
+    ],
+  );
+
+  const awards = history.awards(seasonOf("2026-11-15"));
+  const holder = (kind: Award["kind"]) => awards.find(({ award }) => award.kind === kind);
+  expect(holder("junkie")).toEqual({ award: { kind: "junkie", days: 3 }, members: [member("max")] });
+  expect(holder("nasal-spray-junkie")).toEqual({ award: { kind: "nasal-spray-junkie", days: 2 }, members: [member("luna")] });
+  // Three at once for both; Luna did it on more days.
+  expect(holder("cocktail-mixer")).toEqual({ award: { kind: "cocktail-mixer", medications: 3, days: 2 }, members: [member("luna")] });
+  expect(holder("tough")).toEqual({ award: { kind: "tough", days: 2 }, members: [member("sam")] });
+});
+
+it("shares the Medication Awards on a tie, Cocktail-Mixer only when the days at its number are equal too", () => {
+  const history = createHistory(
+    [member("luna"), member("max")],
+    ["luna", "max"].map((id): CheckIn => ({ ...sick(id, "2026-11-01", 2), medications: ["nasal-spray", "ibuprofen"] })),
+  );
+  const both = [member("luna"), member("max")];
+
+  const awards = history.awards(seasonOf("2026-11-15"));
+  expect(awards.filter(({ award }) => ["junkie", "nasal-spray-junkie", "cocktail-mixer"].includes(award.kind))).toEqual([
+    { award: { kind: "junkie", days: 1 }, members: both },
+    { award: { kind: "nasal-spray-junkie", days: 1 }, members: both },
+    { award: { kind: "cocktail-mixer", medications: 2, days: 1 }, members: both },
+  ]);
+});
+
+it("gives no Medication Award for nothing: no Nasenspray, no cocktail of a single Medication, no day without", () => {
+  const history = createHistory([member("ben")], [{ ...sick("ben", "2026-11-20", 2), medications: ["ibuprofen"] }]);
+
+  const kinds = history.awards(seasonOf("2026-11-15")).map(({ award }) => award.kind);
+  expect(kinds).toContain("junkie");
+  expect(kinds).not.toContain("nasal-spray-junkie");
+  expect(kinds).not.toContain("cocktail-mixer");
+  expect(kinds).not.toContain("tough");
+});
+
 it("gives everyone with Check-ins in the Season at least one Award, and Members without none", () => {
   const history = createHistory(
     [member("luna"), member("max"), member("sam"), member("ben"), member("oma", true)],
@@ -734,6 +790,7 @@ it("gives everyone with Check-ins in the Season at least one Award, and Members 
     { award: { kind: "bounce-back", days: 1.5 }, members: luna },
     { award: { kind: "bravery", severity: 5, days: 3 }, members: luna },
     { award: { kind: "season-opener", date: "2026-09-04" }, members: luna },
+    { award: { kind: "tough", days: 3 }, members: luna },
     { award: { kind: "symptom-champion", symptom: "runny-nose", days: 1 }, members: [member("max")] },
     { award: { kind: "mystery" }, members: [member("sam")] },
     { award: { kind: "unbreakable" }, members: [member("ben")] },

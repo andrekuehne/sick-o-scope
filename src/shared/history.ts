@@ -99,8 +99,8 @@ export type FamilyWave = {
 
 /**
  * An Award ("Auszeichnung", GLOSSARY.md): a playful title for a Season, with the number it was
- * won with. The first seven go to whoever did best, sharing it when tied; a Member who won none
- * of them gets one of the last three instead, so nobody goes without.
+ * won with. Most go to whoever did best, sharing it when tied; a Member who won none of those
+ * gets one of the fallbacks at the end instead, so nobody goes without.
  */
 export type Award =
   /** Eiserne Abwehr: the longest Healthy Streak in the Season. */
@@ -117,6 +117,14 @@ export type Award =
   | { kind: "season-opener"; date: string }
   /** Wellenreiter: caught in the most Family waves. */
   | { kind: "wave-rider"; waves: number }
+  /** Junkie: the most days with any Medication. */
+  | { kind: "junkie"; days: number }
+  /** Nasenspray-Junkie: the most days with Nasenspray. */
+  | { kind: "nasal-spray-junkie"; days: number }
+  /** Cocktail-Mixer: the most different Medications on one day (at least 2), and the most days with that many. */
+  | { kind: "cocktail-mixer"; medications: number; days: number }
+  /** Hart im Nehmen: the most Sick days with a Severity of 1 or more and no Medication. */
+  | { kind: "tough"; days: number }
   /** For a Member without any of the above: their most frequent Symptom ("Husten-Champion"). */
   | { kind: "symptom-champion"; symptom: SymptomKey; days: number }
   /** …never Sick in the Season ("Unverwüstlich"). */
@@ -355,6 +363,7 @@ export function createHistory(members: Member[], checkIns: CheckIn[]): History {
         bugs: bugs(stats.member.id).filter((b) => b.season === season.label),
         daysAtWorst: sick.filter((c) => c.severity === stats.worstSeverity).length,
         waves: seasonWaves.filter((wave) => wave.members.some((m) => m.id === stats.member.id)).length,
+        sick,
       };
     });
 
@@ -575,8 +584,10 @@ function wavesOf(memberBugs: MemberBug[]): FamilyWave[] {
   });
 }
 
-/** What one Member brings to a Season's Awards. */
-type Contender = { stats: SeasonStats; bugs: Bug[]; daysAtWorst: number; waves: number };
+/** What one Member brings to a Season's Awards; `sick` are their Sick Check-ins in it. */
+type Contender = { stats: SeasonStats; bugs: Bug[]; daysAtWorst: number; waves: number; sick: SickCheckIn[] };
+
+type SickCheckIn = Extract<CheckIn, { status: "sick" }>;
 
 /**
  * One Award's rule: what a Member would win it with, and their score (higher is better,
@@ -584,7 +595,7 @@ type Contender = { stats: SeasonStats; bugs: Bug[]; daysAtWorst: number; waves: 
  */
 type AwardRule = (contender: Contender) => { score: number[]; award: Award } | null;
 
-/** The seven Awards that go to whoever did best, in the order they're shown. */
+/** The Awards that go to whoever did best, in the order they're shown. */
 const AWARD_RULES: AwardRule[] = [
   ({ stats: { longestHealthyStreak: days } }) => (days ? { score: [days], award: { kind: "iron-defence", days } } : null),
   ({ stats: { bugs } }) => (bugs > 0 ? { score: [bugs], award: { kind: "virus-collector", bugs } } : null),
@@ -601,9 +612,28 @@ const AWARD_RULES: AwardRule[] = [
   ({ bugs: [first] }) =>
     first ? { score: [-Number(first.from.replaceAll("-", ""))], award: { kind: "season-opener", date: first.from } } : null,
   ({ waves }) => (waves > 0 ? { score: [waves], award: { kind: "wave-rider", waves } } : null),
+  ({ sick }) => {
+    const days = sick.filter((c) => c.medications.length > 0).length;
+    return days > 0 ? { score: [days], award: { kind: "junkie", days } } : null;
+  },
+  ({ stats }) => {
+    const days = stats.medications.find((m) => m.medication === "nasal-spray")?.days ?? 0;
+    return days > 0 ? { score: [days], award: { kind: "nasal-spray-junkie", days } } : null;
+  },
+  ({ sick }) => {
+    const most = largest(sick.map((c) => c.medications.length)) ?? 0;
+    if (most < 2) return null;
+    const days = sick.filter((c) => c.medications.length === most).length;
+    return { score: [most, days], award: { kind: "cocktail-mixer", medications: most, days } };
+  },
+  ({ sick }) => {
+    // Fast gesund (0) isn't much to bear.
+    const days = sick.filter((c) => c.severity >= 1 && c.medications.length === 0).length;
+    return days > 0 ? { score: [days], award: { kind: "tough", days } } : null;
+  },
 ];
 
-/** The Award for a Member who won none of the seven. */
+/** The Award for a Member who won none of those that go to whoever did best. */
 function fallbackAward(stats: SeasonStats): Award {
   if (stats.sickDays === 0) return { kind: "unbreakable" };
   const [top] = stats.topSymptoms;
