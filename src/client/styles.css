@@ -919,7 +919,12 @@ h3 {
   cursor: pointer;
 }
 
+/* A day zoomed in: its Symptom Badges in the middle, its Medication Badges in a smaller row below. */
 .timeline-day {
+  display: flex;
+  flex-direction: column;
+  /* However wide the emoji draw, Badges never spill into the next day (the outline stays inside). */
+  overflow: hidden;
   border-right: 1px solid var(--bg);
 }
 
@@ -963,13 +968,24 @@ h3 {
 
 .timeline-badges {
   display: flex;
+  flex: 1;
   font-weight: 700;
   flex-wrap: wrap;
   align-content: center;
   justify-content: center;
-  height: 100%;
+  min-height: 0;
   font-size: 15px;
   line-height: 1.2;
+}
+
+.timeline-medication-badges {
+  margin-top: auto;
+  padding-bottom: 3px;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
 }
 
 .timeline-legend {

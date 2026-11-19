@@ -12,6 +12,8 @@ const days = (n: number) => `${n} ${n === 1 ? "Tag" : "Tage"}`;
 const checkInCount = (n: number) => `${n} ${n === 1 ? "Eintrag" : "Einträge"}`;
 /** Days in the dative, as in "an 3 Tagen": "1 Tag", "3 Tagen". */
 const daysDative = (n: number) => `${n} ${n === 1 ? "Tag" : "Tagen"}`;
+/** "Ibuprofen", "Ibuprofen und Nasenspray", "Paracetamol, Ibuprofen und Nasenspray" */
+const andList = (items: string[]) => (items.length < 2 ? items.join("") : `${items.slice(0, -1).join(", ")} und ${items.at(-1)}`);
 /** "1,5": at most one decimal place. */
 const decimal = (n: number) => n.toLocaleString("de-DE", { maximumFractionDigits: 1 });
 /** Champion names where "<Symptom>-Champion" wouldn't sound right, or something better fits. */
@@ -260,6 +262,8 @@ export const de = {
     days: (name: string, when: string, status: string) => `${name}, ${when}: ${status}`,
     /** "Richtig krank (Husten, Fieber)" */
     withSymptoms: (severityLabel: string, symptomNames: string[]) => `${severityLabel} (${symptomNames.join(", ")})`,
+    /** "Richtig krank (Husten), mit Ibuprofen und Nasenspray" */
+    withMedications: (dayText: string, medicationNames: string[]) => `${dayText}, mit ${andList(medicationNames)}`,
     /** In place of the Badges that don't fit on a day. */
     moreBadges: (n: number) => `+${n}`,
     /** A Family wave's band across the lanes. */

@@ -42,6 +42,34 @@ test("edits a past day from the timeline, and the timeline shows the change", as
   await expect(sheet).toBeHidden();
 });
 
+test("shows the Medications taken in a second row of Badges when zoomed in to single days", async ({ page }) => {
+  await signedInWithMembers(page, ["Luna", "Max"]);
+  await logDay(page, "Luna", 0, { status: "sick", severity: 3, symptoms: ["cough"], medications: ["nasal-spray", "ibuprofen"] });
+  await logDay(page, "Max", 0, { status: "sick", severity: 2, medications: ["antibiotics"] });
+  await page.getByRole("navigation", { name: "Hauptnavigation" }).getByRole("link", { name: "Verlauf" }).click();
+  await page.getByRole("button", { name: "Tag", exact: true }).click();
+
+  // The label names them after the Symptoms; their Badges follow the Symptoms', in catalog order.
+  const luna = page.getByRole("group", { name: "Luna" }).getByRole("button", { name: /^Luna, Heute, / });
+  await expect(luna).toHaveAccessibleName(/: Richtig krank \(Husten\), mit Ibuprofen und Nasenspray$/);
+  await expect(luna).toHaveText("😮‍💨💊💦");
+
+  // More than fit: the last place says how many more.
+  await logDay(page, "Luna", 0, { status: "sick", severity: 3, symptoms: ["cough"], medications: ["paracetamol", "ibuprofen", "nasal-spray", "antibiotics"] });
+  await page.reload();
+  await page.getByRole("button", { name: "Tag", exact: true }).click();
+  await expect(luna).toHaveText("😮‍💨🌡️💊+2");
+
+  // Medications without Symptoms still show.
+  const max = page.getByRole("group", { name: "Max" }).getByRole("button", { name: /^Max, Heute, / });
+  await expect(max).toHaveAccessibleName(/: Angeschlagen, mit Antibiotika$/);
+  await expect(max).toHaveText("🧫");
+
+  // Zoomed out, days are colour only.
+  await page.getByRole("button", { name: "Woche" }).click();
+  await expect(page.getByRole("group", { name: "Luna" }).getByRole("button", { name: /: Richtig krank$/ })).toHaveText("");
+});
+
 test("lets the lanes fill the free height for a small Family, and stay level with the avatars", async ({ page }) => {
   const names = ["Luna", "Max", "Oma"];
   await signedInWithMembers(page, names);

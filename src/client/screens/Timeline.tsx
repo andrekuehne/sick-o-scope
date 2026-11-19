@@ -4,7 +4,8 @@ import type { Severity } from "../../shared/check-ins.ts";
 import { addDays, datesBetween, daysBetweenInclusive, isMonday } from "../../shared/dates.ts";
 import { createHistory, type DayStatus, type FamilyWave, type History, type Season, seasonOf } from "../../shared/history.ts";
 import type { Member } from "../../shared/members.ts";
-import { symptom, symptomsInCatalogOrder } from "../../shared/symptoms.ts";
+import { type Medication, medication, medicationsInCatalogOrder } from "../../shared/medications.ts";
+import { type Symptom, symptom, symptomsInCatalogOrder } from "../../shared/symptoms.ts";
 import { BUG_LOOKBACK_DAYS, useCheckIns, useCheckInWrites } from "../check-ins.ts";
 import { CheckInSheet } from "../components/CheckInSheet.tsx";
 import { SeasonBar } from "../components/SeasonBar.tsx";
@@ -24,8 +25,10 @@ type ZoomStep = keyof typeof ZOOM_STEPS;
 const DAY_DETAIL_PX = 30;
 /** From this scale on, Mondays get their day number on the axis. */
 const WEEK_DETAIL_PX = 10;
-/** Badges that fit on one day; with more Symptoms, the last place says "+N". */
+/** Symptom Badges that fit on one day; with more, the last place says "+N". */
 const MAX_BADGES = 4;
+/** The same for the smaller row of Medication Badges below. */
+const MAX_MEDICATION_BADGES = 3;
 
 /** Which days to draw: the ones on screen and a screen's width either side (indexes into the dates). */
 type DrawnDays = { first: number; last: number };
@@ -286,12 +289,8 @@ function Lane({
           const colour = colourOf(member, status);
           if (colour === "blank") return null;
           const symptoms = status.kind === "sick" ? symptomsInCatalogOrder(status.symptoms).map(symptom) : [];
-          const meaning = DAY_COLOURS[colour];
-          const label = t.timeline.days(
-            member.name,
-            dayLabel(date, today),
-            symptoms.length > 0 ? t.timeline.withSymptoms(meaning, symptoms.map((s) => s.name)) : meaning,
-          );
+          const medications = status.kind === "sick" ? medicationsInCatalogOrder(status.medications).map(medication) : [];
+          const label = t.timeline.days(member.name, dayLabel(date, today), dayText(DAY_COLOURS[colour], symptoms, medications));
           return (
             <button
               key={date}
@@ -306,9 +305,12 @@ function Lane({
             >
               {symptoms.length > 0 && (
                 <span className="timeline-badges" aria-hidden="true">
-                  {symptoms.length > MAX_BADGES
-                    ? [...symptoms.slice(0, MAX_BADGES - 1).map((s) => s.badge), t.timeline.moreBadges(symptoms.length - MAX_BADGES + 1)].join("")
-                    : symptoms.map((s) => s.badge).join("")}
+                  {badgesUpTo(symptoms, MAX_BADGES)}
+                </span>
+              )}
+              {medications.length > 0 && (
+                <span className="timeline-medication-badges" aria-hidden="true">
+                  {badgesUpTo(medications, MAX_MEDICATION_BADGES)}
                 </span>
               )}
             </button>
@@ -341,6 +343,18 @@ function Lane({
       })}
     </div>
   );
+}
+
+/** A day's colour meaning, then its Symptoms and the Medications taken: "Richtig krank (Husten), mit Ibuprofen". */
+function dayText(meaning: string, symptoms: Symptom[], medications: Medication[]): string {
+  const withSymptoms = symptoms.length > 0 ? t.timeline.withSymptoms(meaning, symptoms.map((s) => s.name)) : meaning;
+  return medications.length > 0 ? t.timeline.withMedications(withSymptoms, medications.map((m) => m.name)) : withSymptoms;
+}
+
+/** The Badges in a row with room for `max`; with more, the last place says "+N". */
+function badgesUpTo(items: { badge: string }[], max: number): string {
+  if (items.length <= max) return items.map((item) => item.badge).join("");
+  return [...items.slice(0, max - 1).map((item) => item.badge), t.timeline.moreBadges(items.length - max + 1)].join("");
 }
 
 function colourOf(member: Member, status: DayStatus): DayColour {
